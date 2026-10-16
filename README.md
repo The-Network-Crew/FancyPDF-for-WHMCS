@@ -2,6 +2,8 @@
 
 **Clean, custom-branded invoice and quote PDFs — without unnecessary complexity.**
 
+<img src="_LOGO-Wide.png">
+
 FancyPDF is a free, open-source addon that gives WHMCS invoices and quotes a more polished, compact appearance. It uses the **TCPDF engine already included with WHMCS** and retains WHMCS as the source of billing, tax and payment data.
 
 No ionCube, external fonts, CDN assets, JavaScript or commercial licence checks are required to render a PDF.
