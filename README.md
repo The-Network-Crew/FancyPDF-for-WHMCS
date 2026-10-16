@@ -1,8 +1,8 @@
 # FancyPDF
 
-**Development preview v0.3.1-dev** — independent GPL-3.0-or-later invoice and quote PDF addon for **self-hosted WHMCS 8.13** and **PHP 8.3**.
+**Development preview v0.4.2-dev** — independent GPL-3.0-or-later invoice and quote PDF addon for **self-hosted WHMCS 8.13** and **PHP 8.3**.
 
-This is a first implementation, **not yet tested on a live WHMCS installation**. Use a staging WHMCS instance first. Do not deploy to production or email real invoices until the PDF output and restore cycle have been validated.
+This is a first implementation, **under active WHMCS integration testing**. Use a staging WHMCS instance first. Do not deploy to production or email real invoices until the PDF output and restore cycle have been validated.
 
 ## Design
 
@@ -20,10 +20,10 @@ This is a first implementation, **not yet tested on a live WHMCS installation**.
 1. Back up the WHMCS database and the selected theme directory independently.
 2. Copy `modules/addons/fancypdf` from this package into `WHMCS_ROOT/modules/addons/fancypdf`.
 3. In **System Settings > Addon Modules**, activate FancyPDF and configure administrator access.
-4. Open **Addons > FancyPDF**. Choose the *system theme* used for PDF generation and select **Install / update entry points**.
+4. Open **Addons > FancyPDF**. Choose the *System Theme* used for PDF generation and select **Install/Update Template Overrides**.
 5. In **System Settings > Addon Modules > FancyPDF > Configure**, set brand colours (`#RRGGBB`), logo relative path, payment details and footer.
 6. Test an invoice and quote PDF from admin, client area and attached-to-email workflows. Test multi-page output, taxes, credits, payment statuses, special characters and logo images.
-7. To roll back, return to **Addons > FancyPDF**, select each installed theme and click **Restore originals**. Confirm results, then deactivate.
+7. To roll back, return to **Addons > FancyPDF**, select each installed theme and click **Restore original Templates**. Confirm results, then deactivate.
 
 Important: if you are currently running CleanPDF, **do not deactivate it prematurely**. FancyPDF can back up CleanPDF's readable entry-point files, but restoration will restore those files *verbatim*. Keep CleanPDF's complete files and your separate backups until cutover is verified. Run the cutover in staging first.
 
@@ -101,3 +101,10 @@ FancyPDF code is GPL-3.0-or-later. This independently written package does not b
 - Slightly darkened the line-item header background to `#E3E8EC`.
 
 **Staging validation:** check address blocks with many lines and wrapping, long proposal introductions, icon-off rendering, and multi-page invoices/quotes on WHMCS 8.13.
+
+## v0.4.2-dev housekeeping
+
+- Addon author: The Network Crew Pty Ltd; admin UI labels and navigation instructions revised.
+- The installation screen compares the SHA-256 hash of each currently installed theme template with the hash recorded in `mod_fancypdf_installs`. **Verified override (SHA-256 match)** means only that the file's contents have not changed since FancyPDF last installed it. If WHMCS replaces or removes a managed template, the screen reports a mismatch; updates that do not touch the template will not change this status. Compatibility of the PDF rendering behaviour after an upgrade is **not** determined by this check.
+- Footer centre and right text fields support explicit `http://` and `https://` URLs as clickable PDF links. All other text is HTML-escaped; arbitrary HTML is not supported. Footer text remains subject to available fixed-height space.
+- No PDF layout or entry-point changes in this release; existing installations do not require entry-point reinstallation.

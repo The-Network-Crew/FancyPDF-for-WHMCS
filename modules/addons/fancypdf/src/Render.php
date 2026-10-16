@@ -63,6 +63,27 @@ function fancypdf_lines(mixed $value): string
     return nl2br(fancypdf_escape($value), false);
 }
 
+/** Turn only explicit HTTP(S) URLs into TCPDF links; everything else stays escaped. */
+function fancypdf_footer_links(string $value): string
+{
+    $parts = preg_split('~(https?://[^\s<>"\']+)~iu', $value, -1, PREG_SPLIT_DELIM_CAPTURE);
+    if ($parts === false) { return fancypdf_lines($value); }
+    $html = '';
+    foreach ($parts as $part) {
+        if (preg_match('~^https?://~i', $part)) {
+            $url = rtrim($part, '.,;:!?)');
+            $suffix = substr($part, strlen($url));
+            if ($url !== '' && filter_var($url, FILTER_VALIDATE_URL)) {
+                $safe = fancypdf_escape($url);
+                $html .= '<a href="' . $safe . '">' . $safe . '</a>' . fancypdf_escape($suffix);
+                continue;
+            }
+        }
+        $html .= fancypdf_escape($part);
+    }
+    return nl2br($html, false);
+}
+
 function fancypdf_label(array $vars, string $key, string $fallback): string
 {
     $lang = $vars['_LANG'] ?? [];
@@ -155,7 +176,7 @@ function fancypdf_footer(string $type, array $vars): void
         }
         $pdf->SetTextColor(75, 85, 96);
         $pdf->SetFont($font, '', 8);
-        $pdf->writeHTMLCell($width - 3, 33, $x, $bottom - ($title === '' ? 40 : 35), fancypdf_lines($content), 0, 0, false, true, '', true);
+        $pdf->writeHTMLCell($width - 3, 33, $x, $bottom - ($title === '' ? 40 : 35), ( $index === 0 ? fancypdf_lines($content) : fancypdf_footer_links($content) ), 0, 0, false, true, '', true);
     }
     $pdf->SetAutoPageBreak(true, 49);
 }
