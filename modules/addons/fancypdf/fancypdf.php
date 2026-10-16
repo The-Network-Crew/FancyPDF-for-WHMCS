@@ -11,7 +11,7 @@ function fancypdf_config(): array
     return [
         'name' => 'FancyPDF',
         'description' => 'Open-source custom branded Invoice and Quote PDFs for WHMCS v8 LTS & PHP v8 (supported).',
-        'version' => '0.4.2-dev',
+        'version' => '0.4.3-dev',
         'author' => 'The Network Crew Pty Ltd',
         'fields' => [
             'primary_colour' => ['FriendlyName' => 'Branding — primary colour', 'Type' => 'text', 'Size' => '12', 'Default' => '#20354A', 'Description' => 'Hex colour (#RRGGBB)'],

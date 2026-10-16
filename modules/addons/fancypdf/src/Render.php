@@ -340,7 +340,16 @@ function fancypdf_render(string $type, array $vars): void
                 $summary[] = [fancypdf_tax_label((string) $vars[$nameKey], $vars[$rateKey] ?? ''), $vars[$amountKey] ?? ''];
             }
         }
-        if (!empty($vars['credit'])) { $summary[] = [fancypdf_label($vars, 'invoicescredit', 'Credit'), $vars['credit']]; }
+        // Hide credit line if there is nil/zero credit involved in doc.
+        $credit = (string) ($vars['credit'] ?? '');
+        $creditAmount = preg_replace('/[^0-9.-]/', '', $credit);
+
+        if ($creditAmount !== '' && (float) $creditAmount != 0.0) {
+            $summary[] = [
+                fancypdf_label($vars, 'invoicescredit', 'Credit'),
+                $credit
+            ];
+        }
         $summary[] = [fancypdf_label($vars, 'invoicestotal', 'Total'), $vars['total'] ?? $vars['invoiceamount'] ?? ''];
         if (isset($vars['amountpaid'])) { $summary[] = [fancypdf_label($vars, 'invoicesamountpaid', 'Paid'), $vars['amountpaid']]; }
         if (isset($vars['balance'])) { $summary[] = [fancypdf_label($vars, 'invoicesbalance', 'Balance due'), $vars['balance']]; }
@@ -366,10 +375,22 @@ function fancypdf_render(string $type, array $vars): void
     $pdf->writeHTML($summaryHtml, true, false, true, false, '');
 
     if ($type === 'invoice' && !empty($vars['transactions']) && is_array($vars['transactions'])) {
-        $ledger = '<h4>Transactions</h4><table width="100%" cellpadding="5"><tr style="background-color:#EDF2F5;"><th width="25%">Date</th><th width="45%">Description</th><th width="30%">Amount</th></tr>';
+        // Keep the transactions ledger visually consistent with the line-item table.
+        $pdf->Ln(4);
+
+        $ledger = '<table width="100%" cellpadding="7"><tr>'
+            . '<th width="25%" style="' . $header . '">Date of TXN</th>'
+            . '<th width="53%" style="' . $header . '">Transaction Reference</th>'
+            . '<th width="22%" align="right" style="' . $header . '">Value of TXN</th>'
+            . '</tr>';
         foreach ($vars['transactions'] as $transaction) {
             if (!is_array($transaction)) { continue; }
-            $ledger .= '<tr><td>' . fancypdf_escape($transaction['date'] ?? '') . '</td><td>' . fancypdf_escape($transaction['transid'] ?? $transaction['description'] ?? '') . '</td><td>' . fancypdf_escape($transaction['amount'] ?? '') . '</td></tr>';
+            $rowStyle = 'border-bottom:1px solid #E8EDF0;';
+            $ledger .= '<tr>'
+                . '<td width="25%" style="' . $rowStyle . '">' . fancypdf_escape($transaction['date'] ?? '') . '</td>'
+                . '<td width="53%" style="' . $rowStyle . '">' . fancypdf_escape($transaction['transid'] ?? $transaction['description'] ?? '') . '</td>'
+                . '<td width="22%" align="right" style="' . $rowStyle . '">' . fancypdf_escape($transaction['amount'] ?? '') . '</td>'
+                . '</tr>';
         }
         $pdf->writeHTML($ledger . '</table>', true, false, true, false, '');
     }

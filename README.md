@@ -1,6 +1,6 @@
 # FancyPDF
 
-**Development preview v0.4.2-dev** — independent GPL-3.0-or-later invoice and quote PDF addon for **self-hosted WHMCS 8.13** and **PHP 8.3**.
+**Development preview v0.4.4-dev** — independent GPL-3.0-or-later invoice and quote PDF addon for **self-hosted WHMCS 8.13** and **PHP 8.3**.
 
 This is a first implementation, **under active WHMCS integration testing**. Use a staging WHMCS instance first. Do not deploy to production or email real invoices until the PDF output and restore cycle have been validated.
 
@@ -108,3 +108,15 @@ FancyPDF code is GPL-3.0-or-later. This independently written package does not b
 - The installation screen compares the SHA-256 hash of each currently installed theme template with the hash recorded in `mod_fancypdf_installs`. **Verified override (SHA-256 match)** means only that the file's contents have not changed since FancyPDF last installed it. If WHMCS replaces or removes a managed template, the screen reports a mismatch; updates that do not touch the template will not change this status. Compatibility of the PDF rendering behaviour after an upgrade is **not** determined by this check.
 - Footer centre and right text fields support explicit `http://` and `https://` URLs as clickable PDF links. All other text is HTML-escaped; arbitrary HTML is not supported. Footer text remains subject to available fixed-height space.
 - No PDF layout or entry-point changes in this release; existing installations do not require entry-point reinstallation.
+
+## v0.4.3-dev transaction table consistency
+
+- Transactions header now uses the same configured primary-colour text and light-grey background as the line-item table.
+- Matched padding, subtle row separators and right-aligned amounts.
+- Styled Transactions section heading consistently, with no changes to payment or tax calculations.
+
+## v0.4.4-dev transaction table heading
+
+- Removed the standalone Transactions section heading.
+- Renamed the transaction table Description heading to Transaction ID/Reference.
+- Kept the existing transaction rows, layout, and styling unchanged.
