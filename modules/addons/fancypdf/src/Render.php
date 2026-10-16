@@ -157,10 +157,6 @@ function fancypdf_footer(string $type, array $vars): void
         $pdf->SetFont($font, '', 8);
         $pdf->writeHTMLCell($width - 3, 33, $x, $bottom - ($title === '' ? 40 : 35), fancypdf_lines($content), 0, 0, false, true, '', true);
     }
-    // The lower accent rule echoes the thin page-top rule of Design A.
-    $pdf->SetDrawColor(...fancypdf_rgb($accent));
-    $pdf->SetLineWidth(0.7);
-    $pdf->Line(16, $bottom - 3, (float) $pdf->getPageWidth() - 16, $bottom - 3);
     $pdf->SetAutoPageBreak(true, 49);
 }
 
@@ -190,9 +186,6 @@ function fancypdf_render(string $type, array $vars): void
     $pdf->SetTextColor(36, 50, 65);
     $pdf->SetMargins(16, 16, 16);
     $pdf->SetAutoPageBreak(true, 49);
-    $pdf->SetDrawColor(...fancypdf_rgb($accent));
-    $pdf->SetLineWidth(0.7);
-    $pdf->Line(16, 9, (float) $pdf->getPageWidth() - 16, 9);
     $pdf->SetY(18);
     if ($logo) {
         try { $pdf->Image($logo, 16, 18, $width, 0, '', '', '', false, 150); }
@@ -250,11 +243,15 @@ function fancypdf_render(string $type, array $vars): void
     $address = fancypdf_address($client);
     $addressY = $blockY + 7;
     $pdf->writeHTMLCell(82, 0, 16, $addressY, $address, 0, 0, false, true, '', true);
-    $addressBottom = (float) $pdf->GetY();
+    // writeHTMLCell(..., ln=0) does not reliably leave TCPDF's cursor at the
+    // bottom of its rendered content. Independently reserve the measured height.
+    $addressPlain = html_entity_decode(str_replace('<br>', "\n", $address), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $addressHeight = $pdf->getStringHeight(82, $addressPlain);
+    $addressBottom = $addressY + max($addressHeight, count(explode("\n", $addressPlain)) * 5.0);
     $metaX = (float) $pdf->getPageWidth() - 103;
     foreach ($details as $index => $entry) {
         $y = $blockY + $index * 7.7;
-        $icon = ($index === 0) ? 'calendar.svg' : (($index === 1) ? 'calendar-check.svg' : (($index === 3) ? 'credit-card.svg' : ''));
+        $icon = ($index === 0) ? 'calendar.svg' : (($index === 1) ? 'calendar-check.svg' : (($type === 'invoice' && $index === 2) ? 'status.svg' : (($index === 3) ? 'credit-card.svg' : '')));
         $labelX = $metaX;
         if ($icons && $icon !== '') {
             $file = __DIR__ . '/../assets/icons/' . $icon;
@@ -274,7 +271,7 @@ function fancypdf_render(string $type, array $vars): void
         $pdf->Cell(55, 5, (string) ($entry['value'] ?? ''), 0, 0);
     }
     $metaBottom = $blockY + count($details) * 7.7;
-    $pdf->SetY(max($addressBottom, $metaBottom) + 5);
+    $pdf->SetXY(16, max($addressBottom, $metaBottom) + 7);
     $pdf->SetFont($font, '', 9);
     $pdf->SetTextColor(36, 50, 65);
 
@@ -284,7 +281,7 @@ function fancypdf_render(string $type, array $vars): void
         $pdf->Ln(2);
     }
 
-    $header = 'background-color:#EEF1F3;color:' . $primary . ';font-weight:bold;';
+    $header = 'background-color:#E3E8EC;color:' . $primary . ';font-weight:bold;';
     $cells = '';
     $anyTaxable = false;
     if ($type === 'invoice') {

@@ -93,3 +93,11 @@ FancyPDF code is GPL-3.0-or-later. This independently written package does not b
 - No external requests, JavaScript, icon fonts or image libraries.
 
 **Upgrade note:** WHMCS may require reactivation for a newly added addon configuration field to appear; safeguard settings and installation records first. PDFs must be visually tested inside WHMCS 8.13, including long subjects and multi-page documents.
+
+## v0.4.1-dev layout fixes
+- Removed the additional accent rules at the absolute page top and bottom. Kept the header divider and footer divider.
+- Added a local accent-coloured `status.svg` for invoice status when icons are enabled.
+- Reserve header space based on the greater of rendered address-height estimate and metadata rows, then set both X and Y before subsequent document content. This prevents proposal introductory text from overlapping long addresses.
+- Slightly darkened the line-item header background to `#E3E8EC`.
+
+**Staging validation:** check address blocks with many lines and wrapping, long proposal introductions, icon-off rendering, and multi-page invoices/quotes on WHMCS 8.13.
