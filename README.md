@@ -1,122 +1,130 @@
-# FancyPDF
+# FancyPDF for WHMCS
 
-**Development preview v0.4.4-dev** — independent GPL-3.0-or-later invoice and quote PDF addon for **self-hosted WHMCS 8.13** and **PHP 8.3**.
+**Open-source, custom-branded invoice and quote PDFs for WHMCS.**
 
-This is a first implementation, **under active WHMCS integration testing**. Use a staging WHMCS instance first. Do not deploy to production or email real invoices until the PDF output and restore cycle have been validated.
+FancyPDF replaces the standard WHMCS invoice and quote PDF presentation with a clean, compact design while retaining WHMCS as the source of invoice data, taxes, payment information and PDF generation. It uses the TCPDF instance provided by WHMCS and does not load external scripts, fonts, icon services or images.
 
-## Design
+> **Release status:** `v0.4.4-dev` is a development release, not a production-certified release. The current development target is **WHMCS 8.13 LTS with PHP 8.3**. Compatibility with other WHMCS/PHP versions has not yet been verified. Test on staging and validate your own documents before enabling customer delivery.
 
-- WHMCS stays responsible for invoice, quote, tax, payments, formatting and the TCPDF object.
-- A single small renderer handles invoice and quote PDFs, with configurable branding and remittance text.
-- WHMCS native addon configuration fields store options in `tbladdonmodules`.
-- The admin page installs four tiny theme entry points (`invoicepdf.tpl`, `quotepdf.tpl`, `invoicepdffooter.tpl`, `quotepdffooter.tpl`).
-- Original templates are retained **inside the `mod_fancypdf_installs` database table**, not public directories.
-- On reinstall, FancyPDF only replaces its own unmodified entry points; it refuses to overwrite external changes.
-- Restore removes installed entry points and reinstates original content, including the absence of a file.
-- Deactivation refuses while installed templates remain. Restore first.
+## Features
 
-## Install in staging
+- Custom primary and accent colours; optional PNG/JPG logo override and adjustable logo width.
+- Invoice heading: **INVOICE** or **TAX INVOICE**; quote heading: **QUOTE** or **PROPOSAL**.
+- Compact, full-width line-item tables with quantity, unit price, discount and line totals where applicable.
+- WHMCS-provided tax lines, credit, payments and balances; taxable-item markers and explanatory note.
+- Invoice payment history table when transaction data is supplied by WHMCS.
+- Clickable online invoice link below the invoice title, subject to normal WHMCS access controls.
+- Repeating three-column footer: WHMCS company details on the left and configurable centre/right text, titles and explicit HTTP(S) hyperlinks.
+- Small bundled SVG icons, switched on or off through one addon setting.
+- Per-theme PDF template overrides with database-backed original copies and SHA-256 change detection.
+- PHP source available for inspection and modification; no ionCube or commercial licence checks.
 
-1. Back up the WHMCS database and the selected theme directory independently.
-2. Copy `modules/addons/fancypdf` from this package into `WHMCS_ROOT/modules/addons/fancypdf`.
-3. In **System Settings > Addon Modules**, activate FancyPDF and configure administrator access.
-4. Open **Addons > FancyPDF**. Choose the *System Theme* used for PDF generation and select **Install/Update Template Overrides**.
-5. In **System Settings > Addon Modules > FancyPDF > Configure**, set brand colours (`#RRGGBB`), logo relative path, payment details and footer.
-6. Test an invoice and quote PDF from admin, client area and attached-to-email workflows. Test multi-page output, taxes, credits, payment statuses, special characters and logo images.
-7. To roll back, return to **Addons > FancyPDF**, select each installed theme and click **Restore original Templates**. Confirm results, then deactivate.
+## Requirements and limitations
 
-Important: if you are currently running CleanPDF, **do not deactivate it prematurely**. FancyPDF can back up CleanPDF's readable entry-point files, but restoration will restore those files *verbatim*. Keep CleanPDF's complete files and your separate backups until cutover is verified. Run the cutover in staging first.
+- A **self-hosted WHMCS installation** with administrator permissions to activate addon modules and install PDF template overrides.
+- Tested development target: **WHMCS 8.13 / PHP 8.3**; other versions are not claimed to work yet.
+- Write permissions on the selected `templates/<theme>/` directory, and a functional WHMCS database.
+- WHMCS must be able to render its standard invoice and quote PDFs; FancyPDF uses its existing TCPDF object.
+- The `Layout — paper format` setting is informational: the actual PDF paper size is determined when WHMCS creates the PDF, before FancyPDF renders it.
+- FancyPDF does **not** calculate tax, discounts, credits or balances. The document shows the values provided by WHMCS; verify tax configuration and samples in your installation.
+- Fixed-height footer columns may need concise text to avoid overflowing into other page content. Multi-page documents, long addresses, long titles and unusual characters require staging verification.
+- RTL layouts, envelope layouts, custom font management and watermark editing are not part of this development release.
 
-## Scope today
+## Installation
 
-- Invoice and quote PDFs: yes (initial implementation)
-- Primary and accent colours, company logo, logo width, payment text, closing text: yes
-- WHMCS-provided line items, totals, tax and client details: initial pass
-- Invoice transaction history: initial pass, relies on upstream `$transactions` variable
-- Multi-page TCPDF content with repeating three-column footer: initial implementation, requires integration testing
-- Safe installation/restore: implementation present, needs real-world integration testing
-- A4/Letter selection: configuration note only; paper size remains controlled by WHMCS
-- RTL, custom fonts, envelope layouts, custom watermarks: out of v0.1 scope
+1. **Back up your WHMCS database and theme templates** separately. Retain the backups until installation and rollback have been tested.
+2. Copy `modules/addons/fancypdf/` into your WHMCS installation at the same relative path.
+3. Open **System Settings → Addon Modules**, activate **FancyPDF**, and grant access to the appropriate administrator roles.
+4. Configure via **System Settings → Addon Modules → FancyPDF → Configure**.
+5. Open **Addons → FancyPDF**. Choose the **System Theme** used for the PDFs and select **Install/Update Template Overrides**.
+6. Generate test invoices and proposals/quotes from administrator and client views, and verify PDF email attachments before sending any production documents.
 
-## Compatibility and test caveats
+PDF template overrides / entry points are installed **per theme**. FancyPDF does not patch WHMCS core files and does not silently install templates during activation.
 
-WHMCS provides its PDF templates with PHP scope variables. Field names differ in invoice and quote code paths; check generated PDFs carefully against your own 8.13 installation. The renderer does not recalculate monetary values. Theme-specific PDF header/footer files may still run in WHMCS; check for overlap with the rendered page.
+### Configuration overview
 
-The native WHMCS admin CSRF helper `check_token('WHMCS.admin.default')` is required before installing/restoring files. Test this validation in your 8.13 build before rollout.
+| Group | Settings / behaviour |
+| --- | --- |
+| Branding | Primary colour, accent colour, PNG/JPG logo override, logo width in millimetres |
+| Layout | Show icons (`on`/`off`); paper-format informational setting |
+| Document names | Invoice or Tax Invoice; Quote or Proposal |
+| Footer headings | Independently configurable left, centre and right titles |
+| Footer content | Left: WHMCS company information; centre/right: configurable text |
+| Payment | Invoice centre footer falls back to the payment/remittance field when its own content is empty |
+| Legacy footer | Right footer falls back to the legacy closing-text field when its own content is empty |
 
-The requested paper-size setting is included for visibility but does **not** reconfigure TCPDF because WHMCS constructs the PDF before loading its template; adjust WHMCS' PDF paper size separately if needed. The module's inline description is explicit about this.
+Branding colours are entered as `#RRGGBB`. The optional logo override is a path **relative to the WHMCS root** and accepts PNG/JPG files. If omitted, FancyPDF looks for `assets/img/logo.png` or `.jpg`.
 
-## Source layout
+Footer centre/right fields accept plain text, line breaks and explicit `http://` or `https://` links. The recognised URLs become clickable in generated PDFs; arbitrary HTML is not supported. Company information on the left comes from WHMCS system settings; only its heading is editable.
 
+### What the installer changes
+
+FancyPDF installs these **four** files in the selected theme:
+
+```text
+templates/<theme>/invoicepdf.tpl
+templates/<theme>/quotepdf.tpl
+templates/<theme>/invoicepdffooter.tpl
+templates/<theme>/quotepdffooter.tpl
 ```
+
+The installed files are small entry points to the addon renderer; they are not WHMCS core changes. The original file contents (or the fact that a file did not exist) are recorded in the `mod_fancypdf_installs` database table for restoration.
+
+**Safety policy:** Installation refuses to overwrite an unknown FancyPDF entry point or a previously installed template that has subsequently changed. Restoration likewise refuses to overwrite modified files. Independently back up existing custom templates before installation; the database-backed records are not a substitute for normal backups.
+
+### Installation status and WHMCS upgrades
+
+An entry labelled **Verified Override (SHA-256 match)** means its current bytes match the hash FancyPDF stored when it installed the file. A file removed or replaced by a WHMCS/theme update will normally show **Changed / Missing (hash mismatch)**.
+
+That status **does not certify compatibility** with a newer WHMCS PDF engine, other template files or a changed theme. Check all installed overrides after WHMCS/theme upgrades and regenerate representative PDFs. Never use the status label alone as proof that invoices remain correct.
+
+## Verification checklist
+
+Before using customer-facing PDFs, verify:
+
+- [ ] Invoice and quote/proposal with normal and long customer addresses.
+- [ ] Long invoice numbers, proposal subjects and introductory/closing text.
+- [ ] Taxable and non-taxable line items, discounts, one or two tax levels and non-zero GST/tax.
+- [ ] Zero and non-zero credits, partial payments, unpaid and fully paid invoices.
+- [ ] Invoices with several transactions and long payment references.
+- [ ] Multiple-page documents and repeating footers; logo and SVG icons on/off.
+- [ ] Online invoice links, footer links, client permissions and emailed PDF attachments.
+- [ ] Install/update and restore operations on your chosen theme, including modification detection.
+
+## Updating and removing FancyPDF
+
+**Updating the addon files:** Back up first, then replace `modules/addons/fancypdf/` with the new package. Check the changelog for new configuration fields or entry-point changes. WHMCS may not expose newly introduced addon configuration fields until a module reactivation in some installations; exercise care because installation records and existing settings must be preserved.
+
+**Removing:** Open **Addons → FancyPDF**, select each theme with installed overrides and click **Restore original Templates**. Confirm restoration before deactivating the addon. The module deliberately refuses deactivation when installed template records remain.
+
+If a restore is refused because a file has changed, do **not** blindly delete or overwrite it. Inspect the file and compare with your own backups; the refusal protects changes made after FancyPDF's installation.
+
+### Existing CleanPDF installations
+
+Test the migration on staging. FancyPDF can record the original readable PDF entry points, but restoring them does **not** reinstall or repair another module. Keep the complete CleanPDF installation and separate backups until your cutover is verified. No CleanPDF proprietary/encoded code is part of FancyPDF.
+
+## Project structure
+
+```text
+README.md                       Project and installation guide
+CHANGELOG.md                    Release history
+LICENSE                         GPL-3.0-or-later
 modules/addons/fancypdf/
-  fancypdf.php             # Addon registration, native config and admin UI
-  src/Installer.php        # Theme discovery, managed installs and restoration
-  src/Render.php           # Rendering with existing WHMCS TCPDF object
-  entrypoints/invoicepdf.tpl
-  entrypoints/quotepdf.tpl
-  entrypoints/invoicepdffooter.tpl
-  entrypoints/quotepdffooter.tpl
+  fancypdf.php                  Addon configuration and admin page
+  src/Installer.php             Template install, checks and restoration
+  src/Render.php                Shared invoice, quote and footer rendering
+  entrypoints/                  Four WHMCS PDF template entry points
+  assets/icons/                 Local SVG assets
 ```
+
+## Contributing
+
+FancyPDF is an independent open-source project maintained by **The Network Crew Pty Ltd**. Bug reports and patches should include the FancyPDF version, WHMCS/PHP versions, document type, reproduction steps, relevant error messages and a **redacted** example PDF where helpful. Never publish real customer addresses, invoice links with sensitive tokens, credentials or other private billing information.
+
+Keep contributions compatible with the existing WHMCS TCPDF workflow, prefer small readable changes, avoid runtime external services and document any new setting or migration requirement. Please test both invoice and quote paths whenever shared rendering code changes.
 
 ## Licence
 
-FancyPDF code is GPL-3.0-or-later. This independently written package does not bundle any CleanPDF code or proprietary WHMCS template files. See LICENSE.
+Licensed under **GNU GPL-3.0-or-later**; see [`LICENSE`](LICENSE). FancyPDF is independently developed and is not affiliated with or endorsed by WHMCS or the former CleanPDF publisher. WHMCS and other trademarks belong to their respective owners.
 
-## Changes in v0.3.1-dev
-
-- Editable titles for the three footer columns; the left column body remains WHMCS company/address data.
-- Quote heading switch between QUOTE and PROPOSAL.
-- Line Total headings on both document types; Unit Price on quotes.
-- Quote taxable quantities have a `*` marker and legend; quote line discounts show percent suffixes.
-- Tax rows use WHMCS-provided tax names, rates and formatted amounts; tax is not independently calculated.
-- Footer divider uses accent colour and matches the top divider thickness (0.7 mm).
-
-**Test note:** Staging tests should include invoices and quotes with each supported tax level, mixed taxable/non-taxable quote lines, and nonzero discounts. The renderer has been PHP-linted but not executed inside WHMCS in this build.
-
-
-### v0.3.1-dev tidy-up
-
-- Invoice items now use the same `*` taxable marker as quotes, based on the WHMCS `taxed`/`taxable` flag.
-- The taxable-item legend is rendered as a right-aligned row below the totals, rather than between line items and totals.
-- Invoice tax rows continue to use WHMCS native `taxname`, `taxrate`, and `tax` values (and second-level equivalents); quote tax rows use `taxlevel1`, `taxlevel2`, `tax1`, and `tax2`. FancyPDF does not calculate taxes.
-- Footer text and annotation sizes increased from 7.5pt to 8pt; body 9pt, section 10pt, main heading 19pt with overflow reduction, logo fallback 17pt.
-- **Validation:** PDFs containing actual nonzero tax should be tested in WHMCS. A taxable flag by itself does not guarantee a configured or charged tax.
-
-
-## v0.4.0-dev (Design A)
-- Compact side-by-side billing and metadata sections; full-width item tables.
-- Brand-primary highlight on the final totals row (invoice Balance / quote Total).
-- Neutral light-grey table headers, thin accent-coloured top and bottom rules.
-- Bundled local SVG icons for dates, due dates, payment and footer headings.
-- `show_icons` addon option (`on`/`off`), default enabled.
-- No external requests, JavaScript, icon fonts or image libraries.
-
-**Upgrade note:** WHMCS may require reactivation for a newly added addon configuration field to appear; safeguard settings and installation records first. PDFs must be visually tested inside WHMCS 8.13, including long subjects and multi-page documents.
-
-## v0.4.1-dev layout fixes
-- Removed the additional accent rules at the absolute page top and bottom. Kept the header divider and footer divider.
-- Added a local accent-coloured `status.svg` for invoice status when icons are enabled.
-- Reserve header space based on the greater of rendered address-height estimate and metadata rows, then set both X and Y before subsequent document content. This prevents proposal introductory text from overlapping long addresses.
-- Slightly darkened the line-item header background to `#E3E8EC`.
-
-**Staging validation:** check address blocks with many lines and wrapping, long proposal introductions, icon-off rendering, and multi-page invoices/quotes on WHMCS 8.13.
-
-## v0.4.2-dev housekeeping
-
-- Addon author: The Network Crew Pty Ltd; admin UI labels and navigation instructions revised.
-- The installation screen compares the SHA-256 hash of each currently installed theme template with the hash recorded in `mod_fancypdf_installs`. **Verified override (SHA-256 match)** means only that the file's contents have not changed since FancyPDF last installed it. If WHMCS replaces or removes a managed template, the screen reports a mismatch; updates that do not touch the template will not change this status. Compatibility of the PDF rendering behaviour after an upgrade is **not** determined by this check.
-- Footer centre and right text fields support explicit `http://` and `https://` URLs as clickable PDF links. All other text is HTML-escaped; arbitrary HTML is not supported. Footer text remains subject to available fixed-height space.
-- No PDF layout or entry-point changes in this release; existing installations do not require entry-point reinstallation.
-
-## v0.4.3-dev transaction table consistency
-
-- Transactions header now uses the same configured primary-colour text and light-grey background as the line-item table.
-- Matched padding, subtle row separators and right-aligned amounts.
-- Styled Transactions section heading consistently, with no changes to payment or tax calculations.
-
-## v0.4.4-dev transaction table heading
-
-- Removed the standalone Transactions section heading.
-- Renamed the transaction table Description heading to Transaction ID/Reference.
-- Kept the existing transaction rows, layout, and styling unchanged.
+For release-by-release details, see [`CHANGELOG.md`](CHANGELOG.md).

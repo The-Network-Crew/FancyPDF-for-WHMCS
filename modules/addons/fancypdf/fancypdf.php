@@ -6,12 +6,14 @@ use WHMCS\Database\Capsule;
 
 require_once __DIR__ . '/src/Installer.php';
 
+/** Register the addon and the branding, document and footer settings. */
 function fancypdf_config(): array
 {
+    // WHMCS reads these field definitions in Addon Modules > Configure.
     return [
         'name' => 'FancyPDF',
         'description' => 'Open-source custom branded Invoice and Quote PDFs for WHMCS v8 LTS & PHP v8 (supported).',
-        'version' => '0.4.3-dev',
+        'version' => '0.4.4-dev',
         'author' => 'The Network Crew Pty Ltd',
         'fields' => [
             'primary_colour' => ['FriendlyName' => 'Branding — primary colour', 'Type' => 'text', 'Size' => '12', 'Default' => '#20354A', 'Description' => 'Hex colour (#RRGGBB)'],
@@ -33,9 +35,11 @@ function fancypdf_config(): array
     ];
 }
 
+/** Create the template backup registry on first activation. */
 function fancypdf_activate(): array
 {
     try {
+        // Preserve original template bytes for a later explicit restore.
         if (!Capsule::schema()->hasTable('mod_fancypdf_installs')) {
             Capsule::schema()->create('mod_fancypdf_installs', function ($table) {
                 $table->increments('id');
@@ -52,6 +56,7 @@ function fancypdf_activate(): array
     }
 }
 
+/** Prevent deactivation while template overrides still need restoring. */
 function fancypdf_deactivate(): array
 {
     // Never discard original templates or backup records automatically.
@@ -62,13 +67,16 @@ function fancypdf_deactivate(): array
     return ['status' => 'success', 'description' => 'FancyPDF deactivated.'];
 }
 
+/** Show theme override controls and verified-file installation status. */
 function fancypdf_output(array $vars): void
 {
     $themes = fancypdf_themes();
+    // Use the selected theme, or a safe installed theme if the input is invalid.
     $theme = (string) ($_POST['theme'] ?? $_GET['theme'] ?? array_key_first($themes) ?? '');
     if (!array_key_exists($theme, $themes)) { $theme = (string) (array_key_first($themes) ?? ''); }
     $message = '';
     $error = false;
+    // File-changing actions are admin-only POSTs with WHMCS CSRF validation.
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fancypdf_action'])) {
         try {
             if (!function_exists('check_token')) { throw new \RuntimeException('WHMCS CSRF validation unavailable'); }
@@ -79,6 +87,7 @@ function fancypdf_output(array $vars): void
             $message = fancypdf_install_action($theme, $action);
         } catch (\Throwable $e) { $error = true; $message = $e->getMessage(); }
     }
+    // Escape generated admin HTML, including theme names and operation messages.
     $escape = static fn(string $x): string => htmlspecialchars($x, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     echo '<p>Configure via <strong>System Settings &rarr; Addon Modules &rarr; FancyPDF &rarr; Configure</strong>.</p>';
     echo '<p>PDF template overrides / entry points are installed per-theme here.</p>';
@@ -92,6 +101,7 @@ function fancypdf_output(array $vars): void
     echo '<button class="btn btn-default" name="fancypdf_action" value="restore" onclick="return confirm(\'Restore the backed-up original PDF templates?\')">Restore original Templates</button></form>';
     echo '<p><small>Installation refuses to replace unknown or subsequently modified Template Files.<br>Existing contents are preserved in the database. The addon never automatically modifies templates during activation.</small></p>';
     echo '<h3>Installation records</h3><table class="table table-striped"><thead><tr><th>Theme</th><th>Template</th><th>Installed?</th></tr></thead><tbody>';
+    // A matching hash proves file integrity, not compatibility with future WHMCS versions.
     foreach (Capsule::table('mod_fancypdf_installs')->orderBy('theme')->get() as $record) {
         $file = ROOTDIR . '/templates/' . $record->theme . '/' . $record->file;
         $state = is_file($file) && hash_file('sha256', $file) === $record->installed_sha256 ? 'Verified Override (SHA-256 match)' : 'Changed / Missing (hash mismatch)';
