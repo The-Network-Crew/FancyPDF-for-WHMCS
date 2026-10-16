@@ -1,10 +1,65 @@
 <?php
-/** FancyPDF — GPL-3.0-or-later */
+/**
+ *  FancyPDF for WHMCS (Addon Module for PDF Files)
+ *   Repo: https://github.com/The-Network-Crew/FancyPDF-for-WHMCS/
+ *   File: WHMCS addon registration, configuration and administration interface.
+ *
+ *  Copyright (C) The Network Crew Pty Ltd
+ *   SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *   along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 if (!defined('WHMCS')) { exit('Direct access denied'); }
 
 use WHMCS\Database\Capsule;
 
 require_once __DIR__ . '/src/Installer.php';
+
+/** One source of truth for the version shown by WHMCS and the update checker. */
+function fancypdf_version(): string
+{
+    return '0.4.5';
+}
+
+/** Check the plain-text repository version when the admin opens FancyPDF. */
+function fancypdf_latest_version(): ?string
+{
+    $url = 'https://github.com/The-Network-Crew/FancyPDF-for-WHMCS/raw/refs/heads/main/version';
+    if (!function_exists('curl_init')) { return null; }
+
+    $curl = curl_init($url);
+    if ($curl === false) { return null; }
+    curl_setopt_array($curl, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT => 2,
+        CURLOPT_TIMEOUT => 4,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_MAXREDIRS => 3,
+        CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
+        CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTPS,
+        CURLOPT_USERAGENT => 'FancyPDF Update Checker/' . fancypdf_version(),
+    ]);
+    $remote = curl_exec($curl);
+    $status = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    curl_close($curl);
+
+    // Only accept a plain x.y.z version; never interpret remote content as PHP.
+    if ($status !== 200 || !is_string($remote)) { return null; }
+    $remote = trim($remote);
+    return preg_match('/^\d+\.\d+\.\d+$/D', $remote) ? $remote : null;
+}
 
 /** Register the addon and the branding, document and footer settings. */
 function fancypdf_config(): array
@@ -13,7 +68,7 @@ function fancypdf_config(): array
     return [
         'name' => 'FancyPDF',
         'description' => 'Open-source custom branded Invoice and Quote PDFs for WHMCS v8 LTS & PHP v8 (supported).',
-        'version' => '0.4.4-dev',
+        'version' => fancypdf_version(),
         'author' => 'The Network Crew Pty Ltd',
         'fields' => [
             'primary_colour' => ['FriendlyName' => 'Branding — primary colour', 'Type' => 'text', 'Size' => '12', 'Default' => '#20354A', 'Description' => 'Hex colour (#RRGGBB)'],
@@ -91,6 +146,19 @@ function fancypdf_output(array $vars): void
     $escape = static fn(string $x): string => htmlspecialchars($x, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     echo '<p>Configure via <strong>System Settings &rarr; Addon Modules &rarr; FancyPDF &rarr; Configure</strong>.</p>';
     echo '<p>PDF template overrides / entry points are installed per-theme here.</p>';
+    // Display a passive update notice; never download or execute update code.
+    $installedVersion = fancypdf_version();
+    $latestVersion = fancypdf_latest_version();
+    $repositoryUrl = 'https://github.com/The-Network-Crew/FancyPDF-for-WHMCS';
+    if ($latestVersion === null) {
+        echo '<p><small>FancyPDF v' . $escape($installedVersion) . ' — Unable to check for updates.</small></p>';
+    } elseif (version_compare($latestVersion, $installedVersion, '>')) {
+        echo '<div class="alert alert-info">FancyPDF v' . $escape($latestVersion)
+            . ' is available (installed: v' . $escape($installedVersion) . '). '
+            . '<a href="' . $escape($repositoryUrl) . '" target="_blank" rel="noopener noreferrer">View on GitHub</a>.</div>';
+    } else {
+        echo '<p><small>FancyPDF v' . $escape($installedVersion) . ' — Up to date (remote: v' . $escape($latestVersion) . ').</small></p>';
+    }
     if ($message !== '') { echo '<div class="alert alert-' . ($error ? 'danger' : 'success') . '">' . $escape($message) . '</div>'; }
     if (!$themes) { echo '<div class="alert alert-warning">No installed themes found.</div>'; return; }
     echo '<form method="post" action="' . $escape((string) $vars['modulelink']) . '">';
