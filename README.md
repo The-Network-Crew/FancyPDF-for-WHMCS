@@ -1,2 +1,62 @@
-# FancyPDF-for-WHMCS
-Custom Branded Invoice &amp; Quote PDFs for the WHMCS Platform.
+# FancyPDF
+
+**Development preview v0.1.0-dev** — independent GPL-3.0-or-later invoice and quote PDF addon for **self-hosted WHMCS 8.13** and **PHP 8.3**.
+
+This is a first implementation, **not yet tested on a live WHMCS installation**. Use a staging WHMCS instance first. Do not deploy to production or email real invoices until the PDF output and restore cycle have been validated.
+
+## Design
+
+- WHMCS stays responsible for invoice, quote, tax, payments, formatting and the TCPDF object.
+- A single small renderer handles invoice and quote PDFs, with configurable branding and remittance text.
+- WHMCS native addon configuration fields store options in `tbladdonmodules`.
+- The admin page installs two tiny theme entry points (`invoicepdf.tpl`, `quotepdf.tpl`).
+- Original templates are retained **inside the `mod_fancypdf_installs` database table**, not public directories.
+- On reinstall, FancyPDF only replaces its own unmodified entry points; it refuses to overwrite external changes.
+- Restore removes installed entry points and reinstates original content, including the absence of a file.
+- Deactivation refuses while installed templates remain. Restore first.
+
+## Install in staging
+
+1. Back up the WHMCS database and the selected theme directory independently.
+2. Copy `modules/addons/fancypdf` from this package into `WHMCS_ROOT/modules/addons/fancypdf`.
+3. In **System Settings > Addon Modules**, activate FancyPDF and configure administrator access.
+4. Open **Addons > FancyPDF**. Choose the *system theme* used for PDF generation and select **Install / update entry points**.
+5. In **System Settings > Addon Modules > FancyPDF > Configure**, set brand colours (`#RRGGBB`), logo relative path, payment details and footer.
+6. Test an invoice and quote PDF from admin, client area and attached-to-email workflows. Test multi-page output, taxes, credits, payment statuses, special characters and logo images.
+7. To roll back, return to **Addons > FancyPDF**, select each installed theme and click **Restore originals**. Confirm results, then deactivate.
+
+Important: if you are currently running CleanPDF, **do not deactivate it prematurely**. FancyPDF can back up CleanPDF's readable entry-point files, but restoration will restore those files *verbatim*. Keep CleanPDF's complete files and your separate backups until cutover is verified. Run the cutover in staging first.
+
+## Scope today
+
+- Invoice and quote PDFs: yes (initial implementation)
+- Primary and accent colours, company logo, logo width, payment text, closing text: yes
+- WHMCS-provided line items, totals, tax and client details: initial pass
+- Invoice transaction history: initial pass, relies on upstream `$transactions` variable
+- Basic multi-page TCPDF content flow: yes; polished repeating page header/footer: not yet implemented
+- Safe installation/restore: implementation present, needs real-world integration testing
+- A4/Letter selection: configuration note only; paper size remains controlled by WHMCS
+- RTL, custom fonts, envelope layouts, custom watermarks: out of v0.1 scope
+
+## Compatibility and test caveats
+
+WHMCS provides its PDF templates with PHP scope variables. Field names differ in invoice and quote code paths; check generated PDFs carefully against your own 8.13 installation. The renderer does not recalculate monetary values. Theme-specific PDF header/footer files may still run in WHMCS; check for overlap with the rendered page.
+
+The native WHMCS admin CSRF helper `check_token('WHMCS.admin.default')` is required before installing/restoring files. Test this validation in your 8.13 build before rollout.
+
+The requested paper-size setting is included for visibility but does **not** reconfigure TCPDF because WHMCS constructs the PDF before loading its template; adjust WHMCS' PDF paper size separately if needed. The module's inline description is explicit about this.
+
+## Source layout
+
+```
+modules/addons/fancypdf/
+  fancypdf.php             # Addon registration, native config and admin UI
+  src/Installer.php        # Theme discovery, managed installs and restoration
+  src/Render.php           # Rendering with existing WHMCS TCPDF object
+  entrypoints/invoicepdf.tpl
+  entrypoints/quotepdf.tpl
+```
+
+## Licence
+
+FancyPDF code is GPL-3.0-or-later. This independently written package does not bundle any CleanPDF code or proprietary WHMCS template files. See LICENSE.
