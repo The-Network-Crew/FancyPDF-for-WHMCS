@@ -80,13 +80,33 @@ function fancypdf_payment_name(array $vars): string
     return is_string($name) && trim($name) !== '' ? $name : $raw;
 }
 
+function fancypdf_footer_column(string $title, string $content): string
+{
+    $title = trim($title);
+    $heading = $title !== '' ? '<b>' . fancypdf_escape($title) . '</b><br>' : '';
+    return $heading . fancypdf_lines($content);
+}
+
+function fancypdf_tax_label(string $name, mixed $rate): string
+{
+    $name = trim($name) !== '' ? trim($name) : 'Tax';
+    $percentage = trim((string) ($rate ?? ''));
+    return $percentage === '' ? $name : $name . ' (' . rtrim($percentage, '%') . '%)';
+}
+
+function fancypdf_taxable(mixed $value): bool
+{
+    if (is_bool($value)) { return $value; }
+    return in_array(strtolower(trim((string) ($value ?? ''))), ['1', 'yes', 'true', 'on'], true);
+}
+
 function fancypdf_footer(string $type, array $vars): void
 {
     $pdf = $vars['pdf'] ?? null;
     if (!is_object($pdf)) { return; }
     $options = fancypdf_options();
     $font = (string) ($vars['pdfFont'] ?? 'helvetica');
-    $primary = fancypdf_colour(fancypdf_setting($options, 'primary_colour', '#20354A'), '#20354A');
+    $accent = fancypdf_colour(fancypdf_setting($options, 'accent_colour', '#D18A42'), '#D18A42');
     $company = trim((string) ($vars['companyname'] ?? ''));
     $companyAddress = $vars['companyaddress'] ?? [];
     if (!is_array($companyAddress)) { $companyAddress = [$companyAddress]; }
@@ -101,17 +121,17 @@ function fancypdf_footer(string $type, array $vars): void
     // Fixed position on each page; renderer reserves the bottom 49 mm.
     $pdf->SetAutoPageBreak(false, 0);
     $bottom = (float) $pdf->getPageHeight();
-    $pdf->SetDrawColor(...fancypdf_rgb($primary));
-    $pdf->SetLineWidth(0.25);
+    $pdf->SetDrawColor(...fancypdf_rgb($accent));
+    $pdf->SetLineWidth(0.7);
     $pdf->Line(16, $bottom - 44, (float) $pdf->getPageWidth() - 16, $bottom - 44);
     $pdf->SetXY(16, $bottom - 42);
     $pdf->SetFont($font, '', 7.5);
     $pdf->SetTextColor(75, 85, 96);
     $width = ((float) $pdf->getPageWidth() - 32) / 3;
     $columns = [
-        '<b>FROM</b><br>' . fancypdf_lines($left),
-        fancypdf_lines($centre),
-        fancypdf_lines($right),
+        fancypdf_footer_column(fancypdf_setting($options, 'footer_left_title', 'FROM'), $left),
+        fancypdf_footer_column(fancypdf_setting($options, 'footer_centre_title'), $centre),
+        fancypdf_footer_column(fancypdf_setting($options, 'footer_right_title'), $right),
     ];
     foreach ($columns as $index => $html) {
         $pdf->writeHTMLCell($width - 3, 37, 16 + $index * $width, $bottom - 41, $html, 0, 0, false, true, '', true);
@@ -136,7 +156,7 @@ function fancypdf_render(string $type, array $vars): void
         : ($vars['quotenumber'] ?? '');
     $title = $type === 'invoice'
         ? (fancypdf_setting($options, 'invoice_title', 'INVOICE') === 'TAX INVOICE' ? 'TAX INVOICE' : 'INVOICE')
-        : 'QUOTE';
+        : (fancypdf_setting($options, 'quote_title', 'QUOTE') === 'PROPOSAL' ? 'PROPOSAL' : 'QUOTE');
     $logo = fancypdf_logo($options);
     $width = (float) fancypdf_setting($options, 'logo_width', '52');
     $width = max(15, min(80, $width));
@@ -211,23 +231,33 @@ function fancypdf_render(string $type, array $vars): void
             if (!is_array($item)) { continue; }
             $cells .= '<tr><td width="78%" style="border-bottom:1px solid #E8EDF0;">' . fancypdf_lines($item['description'] ?? '') . '</td><td width="22%" align="right" style="border-bottom:1px solid #E8EDF0;">' . fancypdf_escape($item['amount'] ?? '') . '</td></tr>';
         }
-        $table = '<table width="100%" cellpadding="7"><tr><th width="78%" style="' . $header . '">Description</th><th width="22%" align="right" style="' . $header . '">Amount</th></tr>' . $cells . '</table>';
+        $table = '<table width="100%" cellpadding="7"><tr><th width="78%" style="' . $header . '">Description</th><th width="22%" align="right" style="' . $header . '">Line Total</th></tr>' . $cells . '</table>';
     } else {
+        $anyTaxable = false;
         foreach (($vars['lineitems'] ?? []) as $item) {
             if (!is_array($item)) { continue; }
-            $cells .= '<tr><td width="9%" style="border-bottom:1px solid #E8EDF0;">' . fancypdf_escape($item['qty'] ?? '') . '</td><td width="43%" style="border-bottom:1px solid #E8EDF0;">' . fancypdf_lines($item['description'] ?? '') . '</td><td width="16%" align="right" style="border-bottom:1px solid #E8EDF0;">' . fancypdf_escape($item['unitprice'] ?? '') . '</td><td width="14%" align="right" style="border-bottom:1px solid #E8EDF0;">' . fancypdf_escape($item['discount'] ?? '') . '</td><td width="18%" align="right" style="border-bottom:1px solid #E8EDF0;">' . fancypdf_escape($item['total'] ?? '') . '</td></tr>';
+            $taxable = fancypdf_taxable($item['taxed'] ?? $item['taxable'] ?? false);
+            $anyTaxable = $anyTaxable || $taxable;
+            $qty = fancypdf_escape($item['qty'] ?? '') . ($taxable ? '*' : '');
+            $discount = trim((string) ($item['discount'] ?? ''));
+            if ($discount !== '' && !str_ends_with($discount, '%')) { $discount .= '%'; }
+            $cells .= '<tr><td width="9%" style="border-bottom:1px solid #E8EDF0;">' . $qty . '</td><td width="40%" style="border-bottom:1px solid #E8EDF0;">' . fancypdf_lines($item['description'] ?? '') . '</td><td width="19%" align="right" style="border-bottom:1px solid #E8EDF0;">' . fancypdf_escape($item['unitprice'] ?? '') . '</td><td width="14%" align="right" style="border-bottom:1px solid #E8EDF0;">' . fancypdf_escape($discount) . '</td><td width="18%" align="right" style="border-bottom:1px solid #E8EDF0;">' . fancypdf_escape($item['total'] ?? '') . '</td></tr>';
         }
-        $table = '<table width="100%" cellpadding="6"><tr><th width="9%" style="' . $header . '">Qty</th><th width="43%" style="' . $header . '">Description</th><th width="16%" align="right" style="' . $header . '">Unit</th><th width="14%" align="right" style="' . $header . '">Discount</th><th width="18%" align="right" style="' . $header . '">Amount</th></tr>' . $cells . '</table>';
+        $table = '<table width="100%" cellpadding="6"><tr><th width="9%" style="' . $header . '">Qty</th><th width="40%" style="' . $header . '">Description</th><th width="19%" align="right" style="' . $header . '">Unit Price</th><th width="14%" align="right" style="' . $header . '">Discount</th><th width="18%" align="right" style="' . $header . '">Line Total</th></tr>' . $cells . '</table>';
     }
     $pdf->SetFont($font, '', 9);
     $pdf->writeHTML($table, true, false, true, false, '');
+    if ($type === 'quote' && !empty($anyTaxable)) {
+        $pdf->SetFont($font, '', 7.5);
+        $pdf->writeHTML('<span style="color:#687785;">* Indicates a taxable line item.</span>', true, false, true, false, '');
+    }
     $pdf->Ln(4);
 
     $summary = [];
     $summary[] = [fancypdf_label($vars, 'invoicessubtotal', 'Subtotal'), $vars['subtotal'] ?? ''];
     if ($type === 'invoice') {
-        if (!empty($vars['taxname'])) { $summary[] = [$vars['taxname'] . ' (' . ($vars['taxrate'] ?? '') . '%)', $vars['tax'] ?? '']; }
-        if (!empty($vars['taxname2'])) { $summary[] = [$vars['taxname2'] . ' (' . ($vars['taxrate2'] ?? '') . '%)', $vars['tax2'] ?? '']; }
+        if (!empty($vars['taxname'])) { $summary[] = [fancypdf_tax_label((string) $vars['taxname'], $vars['taxrate'] ?? ''), $vars['tax'] ?? '']; }
+        if (!empty($vars['taxname2'])) { $summary[] = [fancypdf_tax_label((string) $vars['taxname2'], $vars['taxrate2'] ?? ''), $vars['tax2'] ?? '']; }
         if (!empty($vars['credit'])) { $summary[] = [fancypdf_label($vars, 'invoicescredit', 'Credit'), $vars['credit']]; }
         $summary[] = [fancypdf_label($vars, 'invoicestotal', 'Total'), $vars['total'] ?? $vars['invoiceamount'] ?? ''];
         if (isset($vars['amountpaid'])) { $summary[] = [fancypdf_label($vars, 'invoicesamountpaid', 'Paid'), $vars['amountpaid']]; }
@@ -235,7 +265,7 @@ function fancypdf_render(string $type, array $vars): void
     } else {
         foreach ([1, 2] as $index) {
             $taxlevel = $vars['taxlevel' . $index] ?? [];
-            if (!empty($taxlevel['rate'])) { $summary[] = [($taxlevel['name'] ?? 'Tax') . ' (' . $taxlevel['rate'] . '%)', $vars['tax' . $index] ?? '']; }
+            if ((float) ($taxlevel['rate'] ?? 0) > 0) { $summary[] = [fancypdf_tax_label((string) ($taxlevel['name'] ?? 'Tax'), $taxlevel['rate']), $vars['tax' . $index] ?? '']; }
         }
         $summary[] = [fancypdf_label($vars, 'invoicestotal', 'Total'), $vars['total'] ?? ''];
     }

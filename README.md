@@ -1,6 +1,6 @@
 # FancyPDF
 
-**Development preview v0.2.0-dev** — independent GPL-3.0-or-later invoice and quote PDF addon for **self-hosted WHMCS 8.13** and **PHP 8.3**.
+**Development preview v0.3.0-dev** — independent GPL-3.0-or-later invoice and quote PDF addon for **self-hosted WHMCS 8.13** and **PHP 8.3**.
 
 This is a first implementation, **not yet tested on a live WHMCS installation**. Use a staging WHMCS instance first. Do not deploy to production or email real invoices until the PDF output and restore cycle have been validated.
 
@@ -62,3 +62,14 @@ modules/addons/fancypdf/
 ## Licence
 
 FancyPDF code is GPL-3.0-or-later. This independently written package does not bundle any CleanPDF code or proprietary WHMCS template files. See LICENSE.
+
+## Changes in v0.3.0-dev
+
+- Editable titles for the three footer columns; the left column body remains WHMCS company/address data.
+- Quote heading switch between QUOTE and PROPOSAL.
+- Line Total headings on both document types; Unit Price on quotes.
+- Quote taxable quantities have a `*` marker and legend; quote line discounts show percent suffixes.
+- Tax rows use WHMCS-provided tax names, rates and formatted amounts; tax is not independently calculated.
+- Footer divider uses accent colour and matches the top divider thickness (0.7 mm).
+
+**Test note:** Staging tests should include invoices and quotes with each supported tax level, mixed taxable/non-taxable quote lines, and nonzero discounts. The renderer has been PHP-linted but not executed inside WHMCS in this build.

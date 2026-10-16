@@ -11,7 +11,7 @@ function fancypdf_config(): array
     return [
         'name' => 'FancyPDF',
         'description' => 'Open-source invoice and quote PDFs for WHMCS 8.13 / PHP 8.3.',
-        'version' => '0.2.0-dev',
+        'version' => '0.3.0-dev',
         'author' => 'FancyPDF contributors',
         'fields' => [
             'primary_colour' => ['FriendlyName' => 'Branding — primary colour', 'Type' => 'text', 'Size' => '12', 'Default' => '#20354A', 'Description' => 'Hex colour (#RRGGBB)'],
@@ -19,6 +19,10 @@ function fancypdf_config(): array
             'logo_path' => ['FriendlyName' => 'Branding — logo', 'Type' => 'text', 'Size' => '55', 'Default' => '', 'Description' => 'Optional relative path inside WHMCS root (PNG or JPEG); defaults to assets/img/logo.png or .jpg'],
             'logo_width' => ['FriendlyName' => 'Branding — logo width (mm)', 'Type' => 'text', 'Size' => '5', 'Default' => '52'],
             'invoice_title' => ['FriendlyName' => 'Invoice — heading', 'Type' => 'dropdown', 'Options' => 'INVOICE,TAX INVOICE', 'Default' => 'INVOICE'],
+            'quote_title' => ['FriendlyName' => 'Quote — heading', 'Type' => 'dropdown', 'Options' => 'QUOTE,PROPOSAL', 'Default' => 'QUOTE'],
+            'footer_left_title' => ['FriendlyName' => 'Footer — left title', 'Type' => 'text', 'Size' => '35', 'Default' => 'FROM'],
+            'footer_centre_title' => ['FriendlyName' => 'Footer — centre title', 'Type' => 'text', 'Size' => '35', 'Default' => ''],
+            'footer_right_title' => ['FriendlyName' => 'Footer — right title', 'Type' => 'text', 'Size' => '35', 'Default' => ''],
             'footer_centre' => ['FriendlyName' => 'Footer — centre column', 'Type' => 'textarea', 'Rows' => '4', 'Cols' => '65', 'Default' => '', 'Description' => 'Defaults to payment details on invoices when empty. Plain text; line breaks supported.'],
             'footer_right' => ['FriendlyName' => 'Footer — right column', 'Type' => 'textarea', 'Rows' => '4', 'Cols' => '65', 'Default' => '', 'Description' => 'Defaults to existing Footer — custom text when empty. Plain text; line breaks supported.'],
             'payment_details' => ['FriendlyName' => 'Payment — bank / remittance details', 'Type' => 'textarea', 'Rows' => '5', 'Cols' => '65', 'Default' => '', 'Description' => 'Shown in footer centre on invoices when Footer — centre column is empty'],
