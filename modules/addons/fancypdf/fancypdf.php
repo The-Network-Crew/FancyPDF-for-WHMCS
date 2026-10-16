@@ -11,12 +11,13 @@ function fancypdf_config(): array
     return [
         'name' => 'FancyPDF',
         'description' => 'Open-source invoice and quote PDFs for WHMCS 8.13 / PHP 8.3.',
-        'version' => '0.3.0-dev',
+        'version' => '0.4.0-dev',
         'author' => 'FancyPDF contributors',
         'fields' => [
             'primary_colour' => ['FriendlyName' => 'Branding — primary colour', 'Type' => 'text', 'Size' => '12', 'Default' => '#20354A', 'Description' => 'Hex colour (#RRGGBB)'],
             'accent_colour' => ['FriendlyName' => 'Branding — accent colour', 'Type' => 'text', 'Size' => '12', 'Default' => '#D18A42', 'Description' => 'Hex colour (#RRGGBB)'],
             'logo_path' => ['FriendlyName' => 'Branding — logo', 'Type' => 'text', 'Size' => '55', 'Default' => '', 'Description' => 'Optional relative path inside WHMCS root (PNG or JPEG); defaults to assets/img/logo.png or .jpg'],
+            'show_icons' => ['FriendlyName' => 'Layout — show small icons', 'Type' => 'dropdown', 'Options' => 'on,off', 'Default' => 'on', 'Description' => 'Enable or disable the bundled local SVG icons in PDF metadata and footer headings.'],
             'logo_width' => ['FriendlyName' => 'Branding — logo width (mm)', 'Type' => 'text', 'Size' => '5', 'Default' => '52'],
             'invoice_title' => ['FriendlyName' => 'Invoice — heading', 'Type' => 'dropdown', 'Options' => 'INVOICE,TAX INVOICE', 'Default' => 'INVOICE'],
             'quote_title' => ['FriendlyName' => 'Quote — heading', 'Type' => 'dropdown', 'Options' => 'QUOTE,PROPOSAL', 'Default' => 'QUOTE'],

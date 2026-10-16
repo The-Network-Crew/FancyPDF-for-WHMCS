@@ -107,6 +107,7 @@ function fancypdf_footer(string $type, array $vars): void
     $options = fancypdf_options();
     $font = (string) ($vars['pdfFont'] ?? 'helvetica');
     $accent = fancypdf_colour(fancypdf_setting($options, 'accent_colour', '#D18A42'), '#D18A42');
+    $icons = fancypdf_setting($options, 'show_icons', 'on') !== 'off';
     $company = trim((string) ($vars['companyname'] ?? ''));
     $companyAddress = $vars['companyaddress'] ?? [];
     if (!is_array($companyAddress)) { $companyAddress = [$companyAddress]; }
@@ -124,18 +125,42 @@ function fancypdf_footer(string $type, array $vars): void
     $pdf->SetDrawColor(...fancypdf_rgb($accent));
     $pdf->SetLineWidth(0.7);
     $pdf->Line(16, $bottom - 44, (float) $pdf->getPageWidth() - 16, $bottom - 44);
-    $pdf->SetXY(16, $bottom - 42);
     $pdf->SetFont($font, '', 8);
     $pdf->SetTextColor(75, 85, 96);
     $width = ((float) $pdf->getPageWidth() - 32) / 3;
     $columns = [
-        fancypdf_footer_column(fancypdf_setting($options, 'footer_left_title', 'FROM'), $left),
-        fancypdf_footer_column(fancypdf_setting($options, 'footer_centre_title'), $centre),
-        fancypdf_footer_column(fancypdf_setting($options, 'footer_right_title'), $right),
+        [fancypdf_setting($options, 'footer_left_title', 'FROM'), $left, 'building.svg'],
+        [fancypdf_setting($options, 'footer_centre_title'), $centre, 'credit-card.svg'],
+        [fancypdf_setting($options, 'footer_right_title'), $right, 'headset.svg'],
     ];
-    foreach ($columns as $index => $html) {
-        $pdf->writeHTMLCell($width - 3, 37, 16 + $index * $width, $bottom - 41, $html, 0, 0, false, true, '', true);
+    foreach ($columns as $index => [$title, $content, $iconFile]) {
+        $x = 16 + $index * $width;
+        $headingY = $bottom - 40.5;
+        $title = trim($title);
+        if ($title !== '') {
+            $titleX = $x;
+            if ($icons) {
+                $icon = __DIR__ . '/../assets/icons/' . $iconFile;
+                if (is_file($icon)) {
+                    // TCPDF accepts SVG source prefixed by @. Local files only; no HTTP requests.
+                    $svg = str_replace('#ACCENT#', $accent, file_get_contents($icon));
+                    try { $pdf->ImageSVG('@' . $svg, $x, $headingY + .2, 3.6, 3.6); $titleX += 5.0; }
+                    catch (\Throwable $e) { /* An icon cannot prevent PDF generation. */ }
+                }
+            }
+            $pdf->SetFont($font, 'B', 8);
+            $pdf->SetTextColor(...fancypdf_rgb(fancypdf_colour(fancypdf_setting($options, 'primary_colour', '#20354A'), '#20354A')));
+            $pdf->SetXY($titleX, $headingY);
+            $pdf->Cell($width - ($titleX - $x) - 3, 5, $title, 0, 0, 'L');
+        }
+        $pdf->SetTextColor(75, 85, 96);
+        $pdf->SetFont($font, '', 8);
+        $pdf->writeHTMLCell($width - 3, 33, $x, $bottom - ($title === '' ? 40 : 35), fancypdf_lines($content), 0, 0, false, true, '', true);
     }
+    // The lower accent rule echoes the thin page-top rule of Design A.
+    $pdf->SetDrawColor(...fancypdf_rgb($accent));
+    $pdf->SetLineWidth(0.7);
+    $pdf->Line(16, $bottom - 3, (float) $pdf->getPageWidth() - 16, $bottom - 3);
     $pdf->SetAutoPageBreak(true, 49);
 }
 
@@ -148,6 +173,7 @@ function fancypdf_render(string $type, array $vars): void
     $primary = fancypdf_colour(fancypdf_setting($options, 'primary_colour', '#20354A'), '#20354A');
     $accent = fancypdf_colour(fancypdf_setting($options, 'accent_colour', '#D18A42'), '#D18A42');
     $font = (string) ($vars['pdfFont'] ?? 'helvetica');
+    $icons = fancypdf_setting($options, 'show_icons', 'on') !== 'off';
     $client = is_array($vars['clientsdetails'] ?? null) ? $vars['clientsdetails'] : [];
     $companyAddress = fancypdf_lines($vars['companyaddress'] ?? []);
     $name = fancypdf_escape($vars['companyname'] ?? '');
@@ -164,6 +190,9 @@ function fancypdf_render(string $type, array $vars): void
     $pdf->SetTextColor(36, 50, 65);
     $pdf->SetMargins(16, 16, 16);
     $pdf->SetAutoPageBreak(true, 49);
+    $pdf->SetDrawColor(...fancypdf_rgb($accent));
+    $pdf->SetLineWidth(0.7);
+    $pdf->Line(16, 9, (float) $pdf->getPageWidth() - 16, 9);
     $pdf->SetY(18);
     if ($logo) {
         try { $pdf->Image($logo, 16, 18, $width, 0, '', '', '', false, 150); }
@@ -208,15 +237,46 @@ function fancypdf_render(string $type, array $vars): void
         $details[] = ['label' => fancypdf_label($vars, 'quotedatecreated', 'Issued'), 'value' => $vars['datecreated'] ?? ''];
         $details[] = ['label' => fancypdf_label($vars, 'quotevaliduntil', 'Valid until'), 'value' => $vars['validuntil'] ?? ''];
     }
-    $meta = '';
-    foreach ($details as $entry) {
-        $meta .= '<tr><td width="37%" style="color:#687785;">' . $entry['label'] . '</td><td width="63%"><b>' . fancypdf_escape($entry['value']) . '</b></td></tr>';
-    }
-    $html = '<table width="100%" cellpadding="4"><tr><td width="53%"><span style="color:' . $primary . ';font-size:10pt;"><b>' . ($type === 'invoice' ? 'BILL TO' : 'PREPARED FOR') . '</b></span><br><br>' . fancypdf_address($client) . '</td><td width="47%"><table width="100%" cellpadding="3">' . $meta . '</table></td></tr></table>';
-    $pdf->SetTextColor(36, 50, 65);
+    // Two side-by-side blocks, with a compact fixed metadata grid. This prevents
+    // the header from consuming more height than the taller of its two columns.
+    $blockY = (float) $pdf->GetY();
+    $billLabel = $type === 'invoice' ? 'BILL TO' : 'PREPARED FOR';
+    $pdf->SetFont($font, 'B', 10);
+    $pdf->SetTextColor(...fancypdf_rgb($primary));
+    $pdf->SetXY(16, $blockY);
+    $pdf->Cell(83, 5, $billLabel, 0, 0);
     $pdf->SetFont($font, '', 9);
-    $pdf->writeHTML($html, true, false, true, false, '');
-    $pdf->Ln(2);
+    $pdf->SetTextColor(36, 50, 65);
+    $address = fancypdf_address($client);
+    $addressY = $blockY + 7;
+    $pdf->writeHTMLCell(82, 0, 16, $addressY, $address, 0, 0, false, true, '', true);
+    $addressBottom = (float) $pdf->GetY();
+    $metaX = (float) $pdf->getPageWidth() - 103;
+    foreach ($details as $index => $entry) {
+        $y = $blockY + $index * 7.7;
+        $icon = ($index === 0) ? 'calendar.svg' : (($index === 1) ? 'calendar-check.svg' : (($index === 3) ? 'credit-card.svg' : ''));
+        $labelX = $metaX;
+        if ($icons && $icon !== '') {
+            $file = __DIR__ . '/../assets/icons/' . $icon;
+            if (is_file($file)) {
+                $svg = str_replace('#ACCENT#', $accent, file_get_contents($file));
+                try { $pdf->ImageSVG('@' . $svg, $metaX, $y + .5, 3.3, 3.3); $labelX += 4.6; }
+                catch (\Throwable $e) { /* Plain-text metadata remains readable. */ }
+            }
+        }
+        $pdf->SetFont($font, '', 8.5);
+        $pdf->SetTextColor(104, 119, 133);
+        $pdf->SetXY($labelX, $y);
+        $pdf->Cell(31 - ($labelX - $metaX), 5, html_entity_decode(strip_tags($entry['label']), ENT_QUOTES, 'UTF-8'), 0, 0);
+        $pdf->SetTextColor(36, 50, 65);
+        $pdf->SetFont($font, 'B', 8.5);
+        $pdf->SetXY($metaX + 32, $y);
+        $pdf->Cell(55, 5, (string) ($entry['value'] ?? ''), 0, 0);
+    }
+    $metaBottom = $blockY + count($details) * 7.7;
+    $pdf->SetY(max($addressBottom, $metaBottom) + 5);
+    $pdf->SetFont($font, '', 9);
+    $pdf->SetTextColor(36, 50, 65);
 
     if ($type === 'quote' && !empty($vars['proposal'])) {
         $pdf->SetFont($font, '', 9);
@@ -224,7 +284,7 @@ function fancypdf_render(string $type, array $vars): void
         $pdf->Ln(2);
     }
 
-    $header = 'background-color:' . $primary . ';color:#FFFFFF;font-weight:bold;';
+    $header = 'background-color:#EEF1F3;color:' . $primary . ';font-weight:bold;';
     $cells = '';
     $anyTaxable = false;
     if ($type === 'invoice') {
@@ -276,7 +336,7 @@ function fancypdf_render(string $type, array $vars): void
     $summaryHtml = '<table width="100%" cellpadding="5">';
     $lastIndex = count($summary) - 1;
     foreach ($summary as $i => $entry) {
-        $emphasis = ($i === $lastIndex) ? 'background-color:#EDF2F5;font-weight:bold;' : '';
+        $emphasis = ($i === $lastIndex) ? 'background-color:' . $primary . ';color:#FFFFFF;font-weight:bold;' : '';
         $summaryHtml .= '<tr><td width="60%"></td><td width="23%" align="right" style="' . $emphasis . '">' . fancypdf_escape($entry[0]) . '</td><td width="17%" align="right" style="' . $emphasis . '">' . fancypdf_escape($entry[1]) . '</td></tr>';
     }
     if ($anyTaxable) {

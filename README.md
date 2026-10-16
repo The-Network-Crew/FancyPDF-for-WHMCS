@@ -82,3 +82,14 @@ FancyPDF code is GPL-3.0-or-later. This independently written package does not b
 - Invoice tax rows continue to use WHMCS native `taxname`, `taxrate`, and `tax` values (and second-level equivalents); quote tax rows use `taxlevel1`, `taxlevel2`, `tax1`, and `tax2`. FancyPDF does not calculate taxes.
 - Footer text and annotation sizes increased from 7.5pt to 8pt; body 9pt, section 10pt, main heading 19pt with overflow reduction, logo fallback 17pt.
 - **Validation:** PDFs containing actual nonzero tax should be tested in WHMCS. A taxable flag by itself does not guarantee a configured or charged tax.
+
+
+## v0.4.0-dev (Design A)
+- Compact side-by-side billing and metadata sections; full-width item tables.
+- Brand-primary highlight on the final totals row (invoice Balance / quote Total).
+- Neutral light-grey table headers, thin accent-coloured top and bottom rules.
+- Bundled local SVG icons for dates, due dates, payment and footer headings.
+- `show_icons` addon option (`on`/`off`), default enabled.
+- No external requests, JavaScript, icon fonts or image libraries.
+
+**Upgrade note:** WHMCS may require reactivation for a newly added addon configuration field to appear; safeguard settings and installation records first. PDFs must be visually tested inside WHMCS 8.13, including long subjects and multi-page documents.
