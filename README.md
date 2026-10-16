@@ -1,6 +1,6 @@
 # FancyPDF
 
-**Development preview v0.3.0-dev** — independent GPL-3.0-or-later invoice and quote PDF addon for **self-hosted WHMCS 8.13** and **PHP 8.3**.
+**Development preview v0.3.1-dev** — independent GPL-3.0-or-later invoice and quote PDF addon for **self-hosted WHMCS 8.13** and **PHP 8.3**.
 
 This is a first implementation, **not yet tested on a live WHMCS installation**. Use a staging WHMCS instance first. Do not deploy to production or email real invoices until the PDF output and restore cycle have been validated.
 
@@ -63,7 +63,7 @@ modules/addons/fancypdf/
 
 FancyPDF code is GPL-3.0-or-later. This independently written package does not bundle any CleanPDF code or proprietary WHMCS template files. See LICENSE.
 
-## Changes in v0.3.0-dev
+## Changes in v0.3.1-dev
 
 - Editable titles for the three footer columns; the left column body remains WHMCS company/address data.
 - Quote heading switch between QUOTE and PROPOSAL.
@@ -73,3 +73,12 @@ FancyPDF code is GPL-3.0-or-later. This independently written package does not b
 - Footer divider uses accent colour and matches the top divider thickness (0.7 mm).
 
 **Test note:** Staging tests should include invoices and quotes with each supported tax level, mixed taxable/non-taxable quote lines, and nonzero discounts. The renderer has been PHP-linted but not executed inside WHMCS in this build.
+
+
+### v0.3.1-dev tidy-up
+
+- Invoice items now use the same `*` taxable marker as quotes, based on the WHMCS `taxed`/`taxable` flag.
+- The taxable-item legend is rendered as a right-aligned row below the totals, rather than between line items and totals.
+- Invoice tax rows continue to use WHMCS native `taxname`, `taxrate`, and `tax` values (and second-level equivalents); quote tax rows use `taxlevel1`, `taxlevel2`, `tax1`, and `tax2`. FancyPDF does not calculate taxes.
+- Footer text and annotation sizes increased from 7.5pt to 8pt; body 9pt, section 10pt, main heading 19pt with overflow reduction, logo fallback 17pt.
+- **Validation:** PDFs containing actual nonzero tax should be tested in WHMCS. A taxable flag by itself does not guarantee a configured or charged tax.

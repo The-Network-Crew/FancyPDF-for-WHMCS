@@ -125,7 +125,7 @@ function fancypdf_footer(string $type, array $vars): void
     $pdf->SetLineWidth(0.7);
     $pdf->Line(16, $bottom - 44, (float) $pdf->getPageWidth() - 16, $bottom - 44);
     $pdf->SetXY(16, $bottom - 42);
-    $pdf->SetFont($font, '', 7.5);
+    $pdf->SetFont($font, '', 8);
     $pdf->SetTextColor(75, 85, 96);
     $width = ((float) $pdf->getPageWidth() - 32) / 3;
     $columns = [
@@ -226,14 +226,17 @@ function fancypdf_render(string $type, array $vars): void
 
     $header = 'background-color:' . $primary . ';color:#FFFFFF;font-weight:bold;';
     $cells = '';
+    $anyTaxable = false;
     if ($type === 'invoice') {
         foreach (($vars['invoiceitems'] ?? []) as $item) {
             if (!is_array($item)) { continue; }
-            $cells .= '<tr><td width="78%" style="border-bottom:1px solid #E8EDF0;">' . fancypdf_lines($item['description'] ?? '') . '</td><td width="22%" align="right" style="border-bottom:1px solid #E8EDF0;">' . fancypdf_escape($item['amount'] ?? '') . '</td></tr>';
+            $taxable = fancypdf_taxable($item['taxed'] ?? $item['taxable'] ?? false);
+            $anyTaxable = $anyTaxable || $taxable;
+            $description = fancypdf_lines($item['description'] ?? '') . ($taxable ? ' *' : '');
+            $cells .= '<tr><td width="78%" style="border-bottom:1px solid #E8EDF0;">' . $description . '</td><td width="22%" align="right" style="border-bottom:1px solid #E8EDF0;">' . fancypdf_escape($item['amount'] ?? '') . '</td></tr>';
         }
         $table = '<table width="100%" cellpadding="7"><tr><th width="78%" style="' . $header . '">Description</th><th width="22%" align="right" style="' . $header . '">Line Total</th></tr>' . $cells . '</table>';
     } else {
-        $anyTaxable = false;
         foreach (($vars['lineitems'] ?? []) as $item) {
             if (!is_array($item)) { continue; }
             $taxable = fancypdf_taxable($item['taxed'] ?? $item['taxable'] ?? false);
@@ -247,17 +250,18 @@ function fancypdf_render(string $type, array $vars): void
     }
     $pdf->SetFont($font, '', 9);
     $pdf->writeHTML($table, true, false, true, false, '');
-    if ($type === 'quote' && !empty($anyTaxable)) {
-        $pdf->SetFont($font, '', 7.5);
-        $pdf->writeHTML('<span style="color:#687785;">* Indicates a taxable line item.</span>', true, false, true, false, '');
-    }
     $pdf->Ln(4);
 
     $summary = [];
     $summary[] = [fancypdf_label($vars, 'invoicessubtotal', 'Subtotal'), $vars['subtotal'] ?? ''];
     if ($type === 'invoice') {
-        if (!empty($vars['taxname'])) { $summary[] = [fancypdf_tax_label((string) $vars['taxname'], $vars['taxrate'] ?? ''), $vars['tax'] ?? '']; }
-        if (!empty($vars['taxname2'])) { $summary[] = [fancypdf_tax_label((string) $vars['taxname2'], $vars['taxrate2'] ?? ''), $vars['tax2'] ?? '']; }
+        // Invoice PDFs use the native WHMCS taxname/taxrate/tax fields.
+        // Suppress tax rows when WHMCS has no applicable named tax rule.
+        foreach ([['taxname', 'taxrate', 'tax'], ['taxname2', 'taxrate2', 'tax2']] as [$nameKey, $rateKey, $amountKey]) {
+            if (trim((string) ($vars[$nameKey] ?? '')) !== '') {
+                $summary[] = [fancypdf_tax_label((string) $vars[$nameKey], $vars[$rateKey] ?? ''), $vars[$amountKey] ?? ''];
+            }
+        }
         if (!empty($vars['credit'])) { $summary[] = [fancypdf_label($vars, 'invoicescredit', 'Credit'), $vars['credit']]; }
         $summary[] = [fancypdf_label($vars, 'invoicestotal', 'Total'), $vars['total'] ?? $vars['invoiceamount'] ?? ''];
         if (isset($vars['amountpaid'])) { $summary[] = [fancypdf_label($vars, 'invoicesamountpaid', 'Paid'), $vars['amountpaid']]; }
@@ -274,6 +278,11 @@ function fancypdf_render(string $type, array $vars): void
     foreach ($summary as $i => $entry) {
         $emphasis = ($i === $lastIndex) ? 'background-color:#EDF2F5;font-weight:bold;' : '';
         $summaryHtml .= '<tr><td width="60%"></td><td width="23%" align="right" style="' . $emphasis . '">' . fancypdf_escape($entry[0]) . '</td><td width="17%" align="right" style="' . $emphasis . '">' . fancypdf_escape($entry[1]) . '</td></tr>';
+    }
+    if ($anyTaxable) {
+        // Place the legend in the right-hand totals area, avoiding an extra row
+        // between the line-item table and the totals breakdown.
+        $summaryHtml .= '<tr><td width="60%"></td><td colspan="2" align="right" style="font-size:8pt;color:#687785;">* Indicates a taxable line item.</td></tr>';
     }
     $summaryHtml .= '</table>';
     $pdf->writeHTML($summaryHtml, true, false, true, false, '');
