@@ -20,7 +20,7 @@ function fancypdf_install_action(string $theme, string $action): string
     $root = realpath(ROOTDIR . '/templates/' . $theme);
     $base = realpath(ROOTDIR . '/templates');
     if ($root === false || $base === false || dirname($root) !== $base) { throw new \RuntimeException('Invalid theme path'); }
-    $files = ['invoicepdf.tpl', 'quotepdf.tpl'];
+    $files = ['invoicepdf.tpl', 'quotepdf.tpl', 'invoicepdffooter.tpl', 'quotepdffooter.tpl'];
     $changes = [];
     // Preflight both files so a conflict stops the whole operation.
     foreach ($files as $name) {

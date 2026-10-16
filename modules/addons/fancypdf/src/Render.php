@@ -69,6 +69,56 @@ function fancypdf_label(array $vars, string $key, string $fallback): string
     return fancypdf_escape($lang[$key] ?? $fallback);
 }
 
+function fancypdf_payment_name(array $vars): string
+{
+    $raw = trim((string) ($vars['paymentmethod'] ?? ''));
+    if ($raw === '') { return ''; }
+    // In PDF context WHMCS may provide a gateway key instead of the display name.
+    // Use the configured title, preserving intentional capitalisation (for example BPAY).
+    $name = Capsule::table('tblpaymentgateways')
+        ->where('gateway', $raw)->where('setting', 'name')->value('value');
+    return is_string($name) && trim($name) !== '' ? $name : $raw;
+}
+
+function fancypdf_footer(string $type, array $vars): void
+{
+    $pdf = $vars['pdf'] ?? null;
+    if (!is_object($pdf)) { return; }
+    $options = fancypdf_options();
+    $font = (string) ($vars['pdfFont'] ?? 'helvetica');
+    $primary = fancypdf_colour(fancypdf_setting($options, 'primary_colour', '#20354A'), '#20354A');
+    $company = trim((string) ($vars['companyname'] ?? ''));
+    $companyAddress = $vars['companyaddress'] ?? [];
+    if (!is_array($companyAddress)) { $companyAddress = [$companyAddress]; }
+    $left = trim($company . "\n" . implode("\n", array_map('strval', $companyAddress)));
+    $centre = trim(fancypdf_setting($options, 'footer_centre'));
+    if ($centre === '' && $type === 'invoice') {
+        $centre = trim(fancypdf_setting($options, 'payment_details'));
+    }
+    $right = trim(fancypdf_setting($options, 'footer_right'));
+    if ($right === '') { $right = trim(fancypdf_setting($options, 'footer_text', 'Thank you for your business.')); }
+
+    // Fixed position on each page; renderer reserves the bottom 49 mm.
+    $pdf->SetAutoPageBreak(false, 0);
+    $bottom = (float) $pdf->getPageHeight();
+    $pdf->SetDrawColor(...fancypdf_rgb($primary));
+    $pdf->SetLineWidth(0.25);
+    $pdf->Line(16, $bottom - 44, (float) $pdf->getPageWidth() - 16, $bottom - 44);
+    $pdf->SetXY(16, $bottom - 42);
+    $pdf->SetFont($font, '', 7.5);
+    $pdf->SetTextColor(75, 85, 96);
+    $width = ((float) $pdf->getPageWidth() - 32) / 3;
+    $columns = [
+        '<b>FROM</b><br>' . fancypdf_lines($left),
+        fancypdf_lines($centre),
+        fancypdf_lines($right),
+    ];
+    foreach ($columns as $index => $html) {
+        $pdf->writeHTMLCell($width - 3, 37, 16 + $index * $width, $bottom - 41, $html, 0, 0, false, true, '', true);
+    }
+    $pdf->SetAutoPageBreak(true, 49);
+}
+
 function fancypdf_render(string $type, array $vars): void
 {
     if (!in_array($type, ['invoice', 'quote'], true)) { throw new \InvalidArgumentException('Unknown PDF type'); }
@@ -84,15 +134,16 @@ function fancypdf_render(string $type, array $vars): void
     $reference = $type === 'invoice'
         ? (($vars['invoicenum'] ?? '') ?: ($vars['invoiceid'] ?? ''))
         : ($vars['quotenumber'] ?? '');
-    $title = $type === 'invoice' ? fancypdf_label($vars, 'invoicestitle', 'INVOICE') : fancypdf_label($vars, 'quotetitle', 'QUOTE');
-    $title = strtoupper($title);
+    $title = $type === 'invoice'
+        ? (fancypdf_setting($options, 'invoice_title', 'INVOICE') === 'TAX INVOICE' ? 'TAX INVOICE' : 'INVOICE')
+        : 'QUOTE';
     $logo = fancypdf_logo($options);
     $width = (float) fancypdf_setting($options, 'logo_width', '52');
     $width = max(15, min(80, $width));
     $pdf->SetFont($font, '', 9);
     $pdf->SetTextColor(36, 50, 65);
     $pdf->SetMargins(16, 16, 16);
-    $pdf->SetAutoPageBreak(true, 19);
+    $pdf->SetAutoPageBreak(true, 49);
     $pdf->SetY(18);
     if ($logo) {
         try { $pdf->Image($logo, 16, 18, $width, 0, '', '', '', false, 150); }
@@ -101,29 +152,41 @@ function fancypdf_render(string $type, array $vars): void
         $pdf->SetFont($font, 'B', 17);
         $pdf->Cell(90, 10, (string) ($vars['companyname'] ?? ''), 0, 0, 'L');
     }
-    $pdf->SetXY(112, 18);
-    $pdf->SetFont($font, 'B', 22);
+    // Use one right-aligned heading, not two cells whose relative positions can wrap.
+    $heading = $title . ' #' . (string) $reference;
     $pdf->SetTextColor(...fancypdf_rgb($primary));
-    $pdf->Cell(82, 11, strip_tags(html_entity_decode($title, ENT_QUOTES, 'UTF-8')), 0, 1, 'R');
-    $pdf->SetX(112);
-    $pdf->SetFont($font, '', 10);
-    $pdf->SetTextColor(76, 89, 100);
-    $pdf->Cell(82, 6, '#' . (string) $reference, 0, 1, 'R');
+    $size = 19.0;
+    do {
+        $pdf->SetFont($font, 'B', $size);
+        if ($pdf->GetStringWidth($heading) <= 99 || $size <= 10) { break; }
+        $size -= 0.5;
+    } while (true);
+    $pdf->SetXY((float) $pdf->getPageWidth() - 115, 18);
+    $pdf->Cell(99, 11, $heading, 0, 0, 'R', false, '', 0, false, 'T', 'M');
+    $dividerY = 42.0;
+    if ($type === 'quote' && trim((string) ($vars['subject'] ?? '')) !== '') {
+        $pdf->SetFont($font, 'B', 10);
+        $pdf->SetTextColor(76, 89, 100);
+        $subject = (string) $vars['subject'];
+        $subjectHeight = $pdf->getStringHeight(99, $subject);
+        $pdf->writeHTMLCell(99, 0, (float) $pdf->getPageWidth() - 115, 30,
+            '<b>' . fancypdf_escape($subject) . '</b>', 0, 0, false, true, 'R', true);
+        $dividerY = max(42.0, 31 + $subjectHeight);
+    }
     $pdf->SetDrawColor(...fancypdf_rgb($accent));
     $pdf->SetLineWidth(0.7);
-    $pdf->Line(16, 42, $pdf->getPageWidth() - 16, 42);
-    $pdf->SetY(49);
+    $pdf->Line(16, $dividerY, $pdf->getPageWidth() - 16, $dividerY);
+    $pdf->SetY($dividerY + 7);
 
     $details = [];
     if ($type === 'invoice') {
         $details[] = ['label' => fancypdf_label($vars, 'invoicesdatecreated', 'Issued'), 'value' => $vars['datecreated'] ?? ''];
         $details[] = ['label' => fancypdf_label($vars, 'invoicesdatedue', 'Due'), 'value' => $vars['duedate'] ?? ''];
         $details[] = ['label' => 'Status', 'value' => $vars['status'] ?? ''];
-        if (!empty($vars['paymentmethod'])) { $details[] = ['label' => 'Payment', 'value' => $vars['paymentmethod']]; }
+        if (!empty($vars['paymentmethod'])) { $details[] = ['label' => 'Payment', 'value' => fancypdf_payment_name($vars)]; }
     } else {
         $details[] = ['label' => fancypdf_label($vars, 'quotedatecreated', 'Issued'), 'value' => $vars['datecreated'] ?? ''];
         $details[] = ['label' => fancypdf_label($vars, 'quotevaliduntil', 'Valid until'), 'value' => $vars['validuntil'] ?? ''];
-        if (!empty($vars['subject'])) { $details[] = ['label' => fancypdf_label($vars, 'quotesubject', 'Subject'), 'value' => $vars['subject']]; }
     }
     $meta = '';
     foreach ($details as $entry) {
@@ -133,10 +196,7 @@ function fancypdf_render(string $type, array $vars): void
     $pdf->SetTextColor(36, 50, 65);
     $pdf->SetFont($font, '', 9);
     $pdf->writeHTML($html, true, false, true, false, '');
-    $pdf->Ln(4);
-    $from = '<table width="100%" cellpadding="3"><tr><td width="53%"><span style="color:' . $primary . ';font-size:9pt;"><b>FROM</b></span><br>' . $name . '<br>' . $companyAddress . '</td><td width="47%"></td></tr></table>';
-    $pdf->writeHTML($from, true, false, true, false, '');
-    $pdf->Ln(3);
+    $pdf->Ln(2);
 
     if ($type === 'quote' && !empty($vars['proposal'])) {
         $pdf->SetFont($font, '', 9);
@@ -197,16 +257,8 @@ function fancypdf_render(string $type, array $vars): void
         $pdf->writeHTML($ledger . '</table>', true, false, true, false, '');
     }
     if (!empty($vars['notes'])) { fancypdf_section($pdf, $font, 'Notes', (string) $vars['notes'], $primary); }
-    $payment = trim(fancypdf_setting($options, 'payment_details'));
-    if ($type === 'invoice' && $payment !== '') { fancypdf_section($pdf, $font, 'Payment details', $payment, $primary); }
     if ($type === 'quote' && !empty($vars['customernotes'])) { fancypdf_section($pdf, $font, 'Additional information', (string) $vars['customernotes'], $primary); }
-    $footer = trim(fancypdf_setting($options, 'footer_text', 'Thank you for your business.'));
-    if ($footer !== '') {
-        $pdf->Ln(5);
-        $pdf->SetFont($font, '', 8);
-        $pdf->SetTextColor(100, 110, 120);
-        $pdf->writeHTML('<p>' . fancypdf_lines($footer) . '</p>', true, false, true, false, '');
-    }
+
 }
 
 function fancypdf_rgb(string $colour): array

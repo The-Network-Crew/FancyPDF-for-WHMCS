@@ -1,6 +1,6 @@
 # FancyPDF
 
-**Development preview v0.1.0-dev** — independent GPL-3.0-or-later invoice and quote PDF addon for **self-hosted WHMCS 8.13** and **PHP 8.3**.
+**Development preview v0.2.0-dev** — independent GPL-3.0-or-later invoice and quote PDF addon for **self-hosted WHMCS 8.13** and **PHP 8.3**.
 
 This is a first implementation, **not yet tested on a live WHMCS installation**. Use a staging WHMCS instance first. Do not deploy to production or email real invoices until the PDF output and restore cycle have been validated.
 
@@ -9,7 +9,7 @@ This is a first implementation, **not yet tested on a live WHMCS installation**.
 - WHMCS stays responsible for invoice, quote, tax, payments, formatting and the TCPDF object.
 - A single small renderer handles invoice and quote PDFs, with configurable branding and remittance text.
 - WHMCS native addon configuration fields store options in `tbladdonmodules`.
-- The admin page installs two tiny theme entry points (`invoicepdf.tpl`, `quotepdf.tpl`).
+- The admin page installs four tiny theme entry points (`invoicepdf.tpl`, `quotepdf.tpl`, `invoicepdffooter.tpl`, `quotepdffooter.tpl`).
 - Original templates are retained **inside the `mod_fancypdf_installs` database table**, not public directories.
 - On reinstall, FancyPDF only replaces its own unmodified entry points; it refuses to overwrite external changes.
 - Restore removes installed entry points and reinstates original content, including the absence of a file.
@@ -33,7 +33,7 @@ Important: if you are currently running CleanPDF, **do not deactivate it prematu
 - Primary and accent colours, company logo, logo width, payment text, closing text: yes
 - WHMCS-provided line items, totals, tax and client details: initial pass
 - Invoice transaction history: initial pass, relies on upstream `$transactions` variable
-- Basic multi-page TCPDF content flow: yes; polished repeating page header/footer: not yet implemented
+- Multi-page TCPDF content with repeating three-column footer: initial implementation, requires integration testing
 - Safe installation/restore: implementation present, needs real-world integration testing
 - A4/Letter selection: configuration note only; paper size remains controlled by WHMCS
 - RTL, custom fonts, envelope layouts, custom watermarks: out of v0.1 scope
@@ -55,6 +55,8 @@ modules/addons/fancypdf/
   src/Render.php           # Rendering with existing WHMCS TCPDF object
   entrypoints/invoicepdf.tpl
   entrypoints/quotepdf.tpl
+  entrypoints/invoicepdffooter.tpl
+  entrypoints/quotepdffooter.tpl
 ```
 
 ## Licence

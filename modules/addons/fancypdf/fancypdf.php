@@ -11,15 +11,18 @@ function fancypdf_config(): array
     return [
         'name' => 'FancyPDF',
         'description' => 'Open-source invoice and quote PDFs for WHMCS 8.13 / PHP 8.3.',
-        'version' => '0.1.0-dev',
+        'version' => '0.2.0-dev',
         'author' => 'FancyPDF contributors',
         'fields' => [
             'primary_colour' => ['FriendlyName' => 'Branding — primary colour', 'Type' => 'text', 'Size' => '12', 'Default' => '#20354A', 'Description' => 'Hex colour (#RRGGBB)'],
             'accent_colour' => ['FriendlyName' => 'Branding — accent colour', 'Type' => 'text', 'Size' => '12', 'Default' => '#D18A42', 'Description' => 'Hex colour (#RRGGBB)'],
             'logo_path' => ['FriendlyName' => 'Branding — logo', 'Type' => 'text', 'Size' => '55', 'Default' => '', 'Description' => 'Optional relative path inside WHMCS root (PNG or JPEG); defaults to assets/img/logo.png or .jpg'],
             'logo_width' => ['FriendlyName' => 'Branding — logo width (mm)', 'Type' => 'text', 'Size' => '5', 'Default' => '52'],
-            'payment_details' => ['FriendlyName' => 'Payment — bank / remittance details', 'Type' => 'textarea', 'Rows' => '5', 'Cols' => '65', 'Default' => '', 'Description' => 'Displayed on invoices only; never include secrets'],
-            'footer_text' => ['FriendlyName' => 'Footer — custom text', 'Type' => 'textarea', 'Rows' => '3', 'Cols' => '65', 'Default' => 'Thank you for your business.'],
+            'invoice_title' => ['FriendlyName' => 'Invoice — heading', 'Type' => 'dropdown', 'Options' => 'INVOICE,TAX INVOICE', 'Default' => 'INVOICE'],
+            'footer_centre' => ['FriendlyName' => 'Footer — centre column', 'Type' => 'textarea', 'Rows' => '4', 'Cols' => '65', 'Default' => '', 'Description' => 'Defaults to payment details on invoices when empty. Plain text; line breaks supported.'],
+            'footer_right' => ['FriendlyName' => 'Footer — right column', 'Type' => 'textarea', 'Rows' => '4', 'Cols' => '65', 'Default' => '', 'Description' => 'Defaults to existing Footer — custom text when empty. Plain text; line breaks supported.'],
+            'payment_details' => ['FriendlyName' => 'Payment — bank / remittance details', 'Type' => 'textarea', 'Rows' => '5', 'Cols' => '65', 'Default' => '', 'Description' => 'Shown in footer centre on invoices when Footer — centre column is empty'],
+            'footer_text' => ['FriendlyName' => 'Footer — legacy closing text', 'Type' => 'textarea', 'Rows' => '3', 'Cols' => '65', 'Default' => 'Thank you for your business.'],
             'paper_size' => ['FriendlyName' => 'Layout — paper format', 'Type' => 'dropdown', 'Options' => 'A4,Letter', 'Default' => 'A4', 'Description' => 'Requires WHMCS PDF creation settings to use the same format; FancyPDF does not change document size.'],
         ],
     ];
