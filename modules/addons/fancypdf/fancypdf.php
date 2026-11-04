@@ -30,7 +30,7 @@ require_once __DIR__ . '/src/Installer.php';
 /** One source of truth for the version shown by WHMCS and the update checker. */
 function fancypdf_version(): string
 {
-    return '0.4.5';
+    return '0.4.6';
 }
 
 /** Check the plain-text repository version when the admin opens FancyPDF. */
@@ -75,10 +75,17 @@ function fancypdf_config(): array
             'accent_colour' => ['FriendlyName' => 'Branding — accent colour', 'Type' => 'text', 'Size' => '12', 'Default' => '#D18A42', 'Description' => 'Hex colour (#RRGGBB)'],
             'logo_path' => ['FriendlyName' => 'Branding — logo override', 'Type' => 'text', 'Size' => '55', 'Default' => '', 'Description' => 'Relative path in WHMCS root (PNG/JPG); defaults to assets/img/logo.png/.jpg'],
             'show_icons' => ['FriendlyName' => 'Layout — show small icons', 'Type' => 'dropdown', 'Options' => 'on,off', 'Default' => 'on', 'Description' => 'Enable or disable the bundled local SVG icons in PDF metadata and footer headings.'],
+            'invoice_online_link' => ['FriendlyName' => 'Invoice — show online link', 'Type' => 'dropdown', 'Options' => 'on,off', 'Default' => 'on', 'Description' => 'Show or hide the client-area invoice hyperlink beneath the invoice number.'],
             'logo_width' => ['FriendlyName' => 'Branding — logo width (mm)', 'Type' => 'text', 'Size' => '5', 'Default' => '52'],
             'invoice_title' => ['FriendlyName' => 'Invoice — heading', 'Type' => 'dropdown', 'Options' => 'INVOICE,TAX INVOICE', 'Default' => 'INVOICE'],
             'quote_title' => ['FriendlyName' => 'Quote — heading', 'Type' => 'dropdown', 'Options' => 'QUOTE,PROPOSAL', 'Default' => 'QUOTE'],
             'footer_left_title' => ['FriendlyName' => 'Footer — left title', 'Type' => 'text', 'Size' => '35', 'Default' => 'FROM'],
+            // Both switches default on, maintaining existing WHMCS company/pay-to output.
+            'footer_left_company' => ['FriendlyName' => 'Footer — left: show company name', 'Type' => 'dropdown', 'Options' => 'on,off', 'Default' => 'on', 'Description' => 'Include the WHMCS System Settings company name in the left footer.'],
+            'footer_left_payto' => ['FriendlyName' => 'Footer — left: show pay-to text', 'Type' => 'dropdown', 'Options' => 'on,off', 'Default' => 'on', 'Description' => 'Include the WHMCS System Settings pay-to/address text in the left footer.'],
+            'footer_left_icon' => ['FriendlyName' => 'Footer — left icon', 'Type' => 'dropdown', 'Options' => 'building,credit-card,headset,calendar,calendar-check,status,none', 'Default' => 'building', 'Description' => 'Local SVG icon beside the left footer title, or none. Global icon switch also applies.'],
+            'footer_centre_icon' => ['FriendlyName' => 'Footer — centre icon', 'Type' => 'dropdown', 'Options' => 'credit-card,building,headset,calendar,calendar-check,status,none', 'Default' => 'credit-card', 'Description' => 'Local SVG icon beside the centre footer title, or none.'],
+            'footer_right_icon' => ['FriendlyName' => 'Footer — right icon', 'Type' => 'dropdown', 'Options' => 'headset,building,credit-card,calendar,calendar-check,status,none', 'Default' => 'headset', 'Description' => 'Local SVG icon beside the right footer title, or none.'],
             'footer_centre_title' => ['FriendlyName' => 'Footer — centre title', 'Type' => 'text', 'Size' => '35', 'Default' => ''],
             'footer_right_title' => ['FriendlyName' => 'Footer — right title', 'Type' => 'text', 'Size' => '35', 'Default' => ''],
             'footer_centre' => ['FriendlyName' => 'Footer — centre column', 'Type' => 'textarea', 'Rows' => '4', 'Cols' => '65', 'Default' => '', 'Description' => 'Defaults to payment details on invoices when empty. Plain text and HTTP(S) hyperlinks; line breaks supported.'],

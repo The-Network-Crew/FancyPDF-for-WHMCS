@@ -4,6 +4,17 @@ Notable changes to **FancyPDF for WHMCS** are recorded here. Versions below docu
 
 The release history reflects the development milestones and available packages, with later refinements incorporated into the final `v0.4.4-dev` source. Some intermediate archives were created under reused development version labels; this changelog uses the agreed final progression and groups related fixes together.
 
+## [0.4.6-dev] — 2026-11-04
+
+### Added
+- [#1](https://github.com/The-Network-Crew/FancyPDF-for-WHMCS/issues/1): Select a bundled icon (or none) independently for each footer column. The existing global icon switch still takes precedence.
+- [#2](https://github.com/The-Network-Crew/FancyPDF-for-WHMCS/issues/2): Independently show/hide the WHMCS company name and pay-to/address text in the left footer.
+- [#3](https://github.com/The-Network-Crew/FancyPDF-for-WHMCS/issues/3): Optional invoice hyperlink beneath the document heading.
+
+### Changed
+- Default settings retain all v0.4.5 behaviour; changes require explicitly configuring the new fields. No PDF entry points or database schema changed.
+- Update the numeric addon version and repository version file to `0.4.6`.
+
 ## [0.4.5-dev] - 2026-10-16
 
 ### Added

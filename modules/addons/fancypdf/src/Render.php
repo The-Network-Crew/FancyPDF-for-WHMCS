@@ -185,8 +185,12 @@ function fancypdf_footer(string $type, array $vars): void
     $accent = fancypdf_colour(fancypdf_setting($options, 'accent_colour', '#D18A42'), '#D18A42');
     $primary = fancypdf_colour(fancypdf_setting($options, 'primary_colour', '#20354A'), '#20354A');
     $icons = fancypdf_setting($options, 'show_icons', 'on') !== 'off';
-    $company = trim((string) ($vars['companyname'] ?? ''));
-    $companyAddress = $vars['companyaddress'] ?? [];
+    // WHMCS supplies companyname separately from the pay-to/address block.
+    // These controls allow either part to be omitted without editing WHMCS settings.
+    $company = fancypdf_setting($options, 'footer_left_company', 'on') === 'off'
+        ? '' : trim((string) ($vars['companyname'] ?? ''));
+    $companyAddress = fancypdf_setting($options, 'footer_left_payto', 'on') === 'off'
+        ? [] : ($vars['companyaddress'] ?? []);
     if (!is_array($companyAddress)) { $companyAddress = [$companyAddress]; }
     $left = trim($company . "\n" . implode("\n", array_map('strval', $companyAddress)));
     // Older payment/closing options remain fallbacks for unconfigured columns.
@@ -206,21 +210,22 @@ function fancypdf_footer(string $type, array $vars): void
     $pdf->SetFont($font, '', 8);
     $pdf->SetTextColor(75, 85, 96);
     $width = ((float) $pdf->getPageWidth() - 32) / 3;
-    // Column headings and content are configurable; company details are automatic.
+    // Each footer heading selects one bundled SVG, or none; no arbitrary file paths.
+    $allowedIcons = ['building', 'credit-card', 'headset', 'calendar', 'calendar-check', 'status'];
     $columns = [
-        [fancypdf_setting($options, 'footer_left_title', 'FROM'), $left, 'building.svg'],
-        [fancypdf_setting($options, 'footer_centre_title'), $centre, 'credit-card.svg'],
-        [fancypdf_setting($options, 'footer_right_title'), $right, 'headset.svg'],
+        [fancypdf_setting($options, 'footer_left_title', 'FROM'), $left, fancypdf_setting($options, 'footer_left_icon', 'building')],
+        [fancypdf_setting($options, 'footer_centre_title'), $centre, fancypdf_setting($options, 'footer_centre_icon', 'credit-card')],
+        [fancypdf_setting($options, 'footer_right_title'), $right, fancypdf_setting($options, 'footer_right_icon', 'headset')],
     ];
     // Draw all three columns at fixed positions in the reserved footer area.
-    foreach ($columns as $index => [$title, $content, $iconFile]) {
+    foreach ($columns as $index => [$title, $content, $iconName]) {
         $x = 16 + $index * $width;
         $headingY = $bottom - 40.5;
         $title = trim($title);
         if ($title !== '') {
             $titleX = $x;
-            if ($icons) {
-                $icon = __DIR__ . '/../assets/icons/' . $iconFile;
+            if ($icons && in_array($iconName, $allowedIcons, true)) {
+                $icon = __DIR__ . '/../assets/icons/' . $iconName . '.svg';
                 if (is_file($icon)) {
                     // TCPDF accepts SVG source prefixed by @. Local files only; no HTTP requests.
                     $svg = str_replace('#ACCENT#', $accent, file_get_contents($icon));
@@ -293,7 +298,8 @@ function fancypdf_render(string $type, array $vars): void
     $dividerY = 42.0;
     // Use the same secondary-title space for a proposal subject or invoice link.
     // The divider moves down if the text wraps, rather than overlapping it.
-    if ($type === 'invoice' && ($invoiceUrl = fancypdf_invoice_url($vars)) !== null) {
+    if ($type === 'invoice' && fancypdf_setting($options, 'invoice_online_link', 'on') !== 'off'
+        && ($invoiceUrl = fancypdf_invoice_url($vars)) !== null) {
         $pdf->SetFont($font, '', 8);
         $pdf->SetTextColor(76, 89, 100);
         $caption = 'Paying with Card? ';
