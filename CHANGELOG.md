@@ -4,6 +4,11 @@ Notable changes to **FancyPDF for WHMCS** are recorded here. Versions below docu
 
 The release history reflects the development milestones and available packages, with later refinements incorporated into the final `v0.4.4-dev` source. Some intermediate archives were created under reused development version labels; this changelog uses the agreed final progression and groups related fixes together.
 
+## [0.4.7-dev] - 2026-11-19
+
+### Fixed
+- [#4](https://github.com/The-Network-Crew/FancyPDF-for-WHMCS/issues/4): Change templates from require to require_once (fix error).
+
 ## [0.4.6-dev] — 2026-11-04
 
 ### Added

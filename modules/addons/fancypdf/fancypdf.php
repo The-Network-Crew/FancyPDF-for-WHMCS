@@ -30,7 +30,7 @@ require_once __DIR__ . '/src/Installer.php';
 /** One source of truth for the version shown by WHMCS and the update checker. */
 function fancypdf_version(): string
 {
-    return '0.4.6';
+    return '0.4.7';
 }
 
 /** Check the plain-text repository version when the admin opens FancyPDF. */
